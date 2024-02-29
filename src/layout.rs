@@ -40,3 +40,27 @@ pub(super) fn generate_footer<B: Backend>() -> Block<'static> {
         .title("Footer")
         .borders(Borders::NONE)
 }
+
+pub(super) struct ElementGeometry {
+    screen_width: u16,
+    screen_height: u16,
+    header_height: u16,
+    footer_height: u16,
+}
+
+impl ElementGeometry {
+    fn new(height: u16, width: u16) -> ElementGeometry {
+        ElementGeometry {
+            screen_width: width,
+            screen_height: height,
+            header_height: 3,
+            footer_height: 3
+        }
+    }
+
+    fn recalculate(mut self, screen_height: u16, screen_width: u16) {
+        self.screen_height = screen_height;
+        self.screen_width = screen_width;
+        ()
+    }
+}
