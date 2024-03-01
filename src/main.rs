@@ -1,19 +1,27 @@
 mod layout;
 mod messages;
-use layout::ElementGeometry;
-use messages::InteruptMessage;
 mod nodes;
+use crate::{
+    layout::ElementGeometry,
+    messages::InteruptMessage,
+    nodes::Node,
+};
+use std::{
+    io,
+    sync::mpsc,
+    thread, env
+};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, KeyEvent, KeyCode, Event},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     execute,
 };
-use std::{io, sync::mpsc, thread};
+use nodes::get_node_list;
 use tui::{
     backend::{Backend, CrosstermBackend},
-    widgets::{Block, Borders, BorderType},
+    widgets::{Block, Borders, ListItem, List, BorderType},
     layout::{Constraint, Direction, Layout},
-    Terminal,
+    Terminal, style::{Style, Color},
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -51,6 +59,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
     spawn_events_thread(tx_clone);
 
     let mut geometry: ElementGeometry = ElementGeometry::new();
+    let cur_dir_nodes: Vec<Node> = get_node_list(env::current_dir().unwrap()).expect("cannot get node list");
 
     loop {
         terminal.draw(|f| {
@@ -62,7 +71,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
                 .constraints([
                     Constraint::Length(geometry.header_height),
                     Constraint::Min(0),
-                    Constraint::Length(geometry.footer_height)
+                    Constraint::Length(geometry.footer_height),
                 ].as_ref())
                 .split(size);
 
@@ -74,33 +83,53 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
                 .constraints([
                     Constraint::Length(geometry.col_1_width),
                     Constraint::Length(geometry.col_2_width),
-                    Constraint::Length(geometry.col_3_width)
+                    Constraint::Length(geometry.col_3_width),
                 ].as_ref())
                 .split(chunks[1]);
 
-            for (i, chunk) in body_chunks.iter().enumerate() {
-                let column = Block::default()
-                    .title(format!("Column {}", i + 1))
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded);
-                f.render_widget(column, *chunk);
-            }
+            let column_1 = Block::default()
+                .title("Column 1")
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded);
+            f.render_widget(column_1, body_chunks[0]);
 
-            let footer: Block<'_> = layout::generate_footer::<B>();
+            let nodes_items: Vec<ListItem> = cur_dir_nodes.iter().map(|node| {
+                let display_text = node.file_name.to_string_lossy();
+                ListItem::new(display_text.to_string())
+            }).collect();
+
+            let nodes_list = List::new(nodes_items)
+                .block(
+                    Block::default()
+                    .title("Current Directory")
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                )
+                .style(Style::default().fg(Color::White))
+                .highlight_style(Style::default().fg(Color::LightGreen))
+                .highlight_symbol(">>");
+
+            f.render_widget(nodes_list, body_chunks[1]); // Render in the second column
+
+            let column_3 = Block::default()
+                .title("Column 3")
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded);
+            f.render_widget(column_3, body_chunks[2]);
+
+            let footer = layout::generate_footer::<B>();
             f.render_widget(footer, chunks[2]);
         })?;
 
-        let interupt_message = rx.recv().unwrap();
-
-        match interupt_message {
+        match rx.recv().unwrap() {
             InteruptMessage::KeyCode(code) => {
                 if code == KeyCode::Char('q') {
                     break;
                 }
-            }
+            },
             InteruptMessage::Resize => {
-                geometry.recalculate()
-            }
+                geometry.recalculate(); // Assuming `recalculate` is a method that exists
+            },
         }
     }
 
