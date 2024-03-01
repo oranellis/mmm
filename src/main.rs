@@ -1,6 +1,8 @@
 mod layout;
 mod messages;
+use layout::ElementGeometry;
 use messages::InteruptMessage;
+mod nodes;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, KeyEvent, KeyCode, Event},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -48,15 +50,20 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
     // Event listening thread
     spawn_events_thread(tx_clone);
 
-    let mut column_widths: (u16, u16, u16) = layout::calculate_column_widths();
+    let mut geometry: ElementGeometry = ElementGeometry::new();
 
     loop {
         terminal.draw(|f| {
             let size = f.size();
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .margin(1)
-                .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)].as_ref())
+                .horizontal_margin(geometry.margain_horizontal)
+                .vertical_margin(geometry.margain_vertical)
+                .constraints([
+                    Constraint::Length(geometry.header_height),
+                    Constraint::Min(0),
+                    Constraint::Length(geometry.footer_height)
+                ].as_ref())
                 .split(size);
 
             let header = layout::generate_header::<B>();
@@ -64,7 +71,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
 
             let body_chunks = Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints([Constraint::Length(column_widths.0), Constraint::Length(column_widths.1), Constraint::Length(column_widths.2)].as_ref())
+                .constraints([
+                    Constraint::Length(geometry.col_1_width),
+                    Constraint::Length(geometry.col_2_width),
+                    Constraint::Length(geometry.col_3_width)
+                ].as_ref())
                 .split(chunks[1]);
 
             for (i, chunk) in body_chunks.iter().enumerate() {
@@ -88,7 +99,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
                 }
             }
             InteruptMessage::Resize => {
-                column_widths = layout::calculate_column_widths()
+                geometry.recalculate()
             }
         }
     }
