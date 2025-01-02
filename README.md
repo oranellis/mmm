@@ -12,6 +12,6 @@ This is currently a personal project to compliment my terminal workflow using a 
 - [ ] Implement system calls for getting files, folders and file information asynchronously
 - [ ] Display current, parent and child folders
 - [ ] Implement fzf folder changing
-- [ ] Implement opener
-- [ ] Implement previewer
-- [ ] Add cli options using clap
+- [ ] Implement nvim opener
+- [ ] Implement previewer (maybe)
+- [ ] Add cli options

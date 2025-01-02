@@ -1,157 +1,112 @@
-mod layout;
-mod messages;
-mod nodes;
-use crate::{
-    layout::ElementGeometry,
-    messages::InteruptMessage,
-    nodes::Node,
-};
 use std::{
-    io,
-    sync::mpsc,
-    thread, env
+    io::{stdout, ErrorKind, Write},
+    sync::mpsc::{channel, Receiver, Sender},
 };
+
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, KeyEvent, KeyCode, Event},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    execute,
-};
-use nodes::get_node_list;
-use tui::{
-    backend::{Backend, CrosstermBackend},
-    widgets::{Block, Borders, ListItem, List, BorderType},
-    layout::{Constraint, Direction, Layout},
-    Terminal, style::{Style, Color},
+    cursor::{position, MoveLeft, MoveTo},
+    event::{read, Event, KeyCode},
+    style::{Print, ResetColor},
+    terminal::{
+        disable_raw_mode, enable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen,
+        SetTitle,
+    },
+    ExecutableCommand, QueueableCommand,
 };
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Setup terminal
+enum UpdateType {
+    String(String),
+    Backspace,
+    Clear,
+}
+
+struct ScreenUpdate {
+    update_type: UpdateType,
+    screen_pos: (u16, u16),
+}
+
+fn terminal_loop(rx: &Receiver<ScreenUpdate>) -> Result<(), std::io::Error> {
+    let mut stdout = stdout();
+    stdout.execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
-    // Application main loop
-    let res = run_app(&mut terminal);
-
-    // Restore terminal
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
-
-    if let Err(err) = res {
-        println!("{:?}", err);
-    }
-
-    Ok(())
-}
-
-fn run_app<B: Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
-    let (tx, rx) = mpsc::channel::<InteruptMessage>();
-    let tx_clone = tx.clone();
-
-    // Event listening thread
-    spawn_events_thread(tx_clone);
-
-    let mut geometry: ElementGeometry = ElementGeometry::new();
-    let cur_dir_nodes: Vec<Node> = get_node_list(env::current_dir().unwrap()).expect("cannot get node list");
-
+    stdout
+        .queue(ResetColor)?
+        .queue(Clear(crossterm::terminal::ClearType::All))?
+        .queue(MoveTo(0, 10))?
+        .queue(SetTitle("mmm"))?
+        .flush()?;
     loop {
-        terminal.draw(|f| {
-            let size = f.size();
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .horizontal_margin(geometry.margain_horizontal)
-                .vertical_margin(geometry.margain_vertical)
-                .constraints([
-                    Constraint::Length(geometry.header_height),
-                    Constraint::Min(0),
-                    Constraint::Length(geometry.footer_height),
-                ].as_ref())
-                .split(size);
-
-            let header = layout::generate_header::<B>();
-            f.render_widget(header, chunks[0]);
-
-            let body_chunks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([
-                    Constraint::Length(geometry.col_1_width),
-                    Constraint::Length(geometry.col_2_width),
-                    Constraint::Length(geometry.col_3_width),
-                ].as_ref())
-                .split(chunks[1]);
-
-            let column_1 = Block::default()
-                .title("Column 1")
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded);
-            f.render_widget(column_1, body_chunks[0]);
-
-            let nodes_items: Vec<ListItem> = cur_dir_nodes.iter().map(|node| {
-                let display_text = node.file_name.to_string_lossy();
-                ListItem::new(display_text.to_string())
-            }).collect();
-
-            let nodes_list = List::new(nodes_items)
-                .block(
-                    Block::default()
-                    .title("Current Directory")
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                )
-                .style(Style::default().fg(Color::White))
-                .highlight_style(Style::default().fg(Color::LightGreen))
-                .highlight_symbol(">>");
-
-            f.render_widget(nodes_list, body_chunks[1]); // Render in the second column
-
-            let column_3 = Block::default()
-                .title("Column 3")
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded);
-            f.render_widget(column_3, body_chunks[2]);
-
-            let footer = layout::generate_footer::<B>();
-            f.render_widget(footer, chunks[2]);
-        })?;
-
-        match rx.recv().unwrap() {
-            InteruptMessage::KeyCode(code) => {
-                if code == KeyCode::Char('q') {
-                    break;
-                }
-            },
-            InteruptMessage::Resize => {
-                geometry.recalculate(); // Assuming `recalculate` is a method that exists
-            },
+        match rx.recv() {
+            Ok(update) => {
+                let (mut x, y) = update.screen_pos;
+                match update.update_type {
+                    UpdateType::String(recv_string) => {
+                        stdout.execute(Print(recv_string))?;
+                        x += 1;
+                    }
+                    UpdateType::Backspace => {
+                        stdout
+                            .queue(MoveLeft(1))?
+                            .queue(Print(" "))?
+                            .queue(MoveLeft(1))?
+                            .flush()?;
+                        x = if x == 0 { 0 } else { x - 1 };
+                    }
+                    UpdateType::Clear => {
+                        stdout
+                            .queue(Clear(crossterm::terminal::ClearType::All))?
+                            .queue(MoveTo(0, 10))?
+                            .flush()?;
+                    }
+                };
+                stdout
+                    .queue(MoveTo(0, 5))?
+                    .queue(Print(format!("({}, {})", x, y)))?
+                    .queue(MoveTo(x, y))?
+                    .flush()?;
+            }
+            Err(_) => break,
         }
     }
-
-    Ok(())
+    stdout.execute(LeaveAlternateScreen)?;
+    disable_raw_mode()?;
+    return Err(std::io::Error::new(ErrorKind::Other, "Keyboard interrupt"));
 }
 
-fn spawn_events_thread(tx: mpsc::Sender<InteruptMessage>) {
-    thread::spawn(move || {
-        loop {
-            let event = event::read().unwrap();
-            match event {
-                Event::Key(KeyEvent { code, .. }) => {
-                    if code == KeyCode::Char('q') {
-                        tx.send(InteruptMessage::KeyCode(code)).unwrap();
-                        break;
-                    }
-                },
-                Event::Resize(_, _) => {
-                    tx.send(InteruptMessage::Resize).unwrap();
-                },
-                _ => {}
-            }
+fn key_input_loop(term_tx: Sender<ScreenUpdate>) {
+    loop {
+        if let Event::Key(key_event) = read().expect("Error reading key") {
+            term_tx
+                .send(ScreenUpdate {
+                    update_type: match key_event.code {
+                        KeyCode::Char(c) => UpdateType::String(c.to_string()),
+                        KeyCode::Backspace => UpdateType::Backspace,
+                        KeyCode::Tab => UpdateType::Clear,
+                        KeyCode::Esc => break, // Cheeky loop control flow
+                        _ => continue,         // Even cheekier loop control flow
+                    },
+                    screen_pos: position().unwrap(),
+                })
+                .expect("Error sending data to display");
         }
+    }
+}
+
+fn main() {
+    let (terminal_tx, terminal_rx): (Sender<ScreenUpdate>, Receiver<ScreenUpdate>) = channel();
+    let terminal_thread = std::thread::spawn(move || {
+        terminal_loop(&terminal_rx).expect_err("Terminal error");
     });
+    let key_input_tx = terminal_tx.clone();
+    let key_input_thread = std::thread::spawn(move || {
+        key_input_loop(key_input_tx);
+    });
+    key_input_thread
+        .join()
+        .expect("Error waiting for thread to join");
+    drop(terminal_tx);
+    terminal_thread
+        .join()
+        .expect("Error waiting for thread to join");
+    println!("Quitting mmm...");
 }
