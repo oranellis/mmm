@@ -12,10 +12,11 @@ use crossterm::{
 };
 use mmm_common::{MmmState, UpdateType};
 use std::{
-    fs,
+    fs::{self, DirEntry},
     io::{self, stdout, Stdout, Write},
     path::Path,
     sync::{Arc, Mutex},
+    thread::sleep,
 };
 
 /// Starts the terminal display
@@ -24,12 +25,11 @@ use std::{
 fn start_display(stdout: Arc<Mutex<Stdout>>) -> Result<(), std::io::Error> {
     let mut stdout = stdout.lock().unwrap();
     stdout
-        .execute(SetTitle("mmm"))?
-        .execute(EnterAlternateScreen)?
-        .execute(ResetColor)?
-        .execute(Clear(crossterm::terminal::ClearType::All))?
-        .execute(MoveTo(0, 5))?
-        .execute(Print("bottom text"))?;
+        .queue(SetTitle("mmm"))?
+        .queue(EnterAlternateScreen)?
+        .queue(ResetColor)?
+        .queue(Clear(crossterm::terminal::ClearType::All))?
+        .flush()?;
     enable_raw_mode()?;
     Ok(())
 }
@@ -102,10 +102,9 @@ fn get_path_size(path: &Path) -> io::Result<u64> {
     Ok(total_size)
 }
 
-#[allow(dead_code)]
-fn fs_reader(read_path: &Path) {
-    let size = get_path_size(&read_path).unwrap();
-    stdout().execute(Print(format!("size: {}", size))).unwrap();
+fn get_dir_list(path: &Path) -> io::Result<Vec<DirEntry>> {
+    let dir_list: Vec<DirEntry> = fs::read_dir(path)?.filter_map(|entry| entry.ok()).collect();
+    Ok(dir_list)
 }
 
 /// The main program loop for processing inputs and updating the display
@@ -128,11 +127,32 @@ fn display_loop(stdout: Arc<Mutex<Stdout>>, _state: Arc<Mutex<MmmState>>) {
     }
 }
 
+fn display_paths(
+    stdout: Arc<Mutex<Stdout>>,
+    _state: Arc<Mutex<MmmState>>,
+) -> Result<(), std::io::Error> {
+    let mut stdout = stdout.lock().unwrap();
+    let cwd = std::env::current_dir().expect("Failed to get cwd");
+    let dir_list = get_dir_list(&cwd).expect("Failed to get cwd dirlist");
+    let mut y: u16 = 0;
+    stdout.queue(MoveTo(12, 0))?.flush()?;
+    for x in dir_list {
+        let fileee = x.file_name().to_string_lossy().to_string();
+        y += 1;
+        stdout
+            .queue(Print(format!("{}", fileee)))?
+            .queue(MoveTo(12, y))?
+            .flush()?;
+    }
+    Ok(())
+}
+
 fn main() {
     let stdout = Arc::new(Mutex::new(stdout()));
     let state = Arc::new(Mutex::new(MmmState::new()));
     start_display(stdout.clone()).expect("Error starting display");
-    display_loop(stdout.clone(), state.clone());
+    display_paths(stdout.clone(), state.clone()).expect("Error displaying paths");
+    display_loop(stdout.clone(), state);
     stop_display(stdout).expect("Error stopping display");
     println!("Quitting mmm...");
 }
