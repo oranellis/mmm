@@ -1,4 +1,6 @@
 mod mmm_common;
+mod style;
+mod terminal;
 
 use crossterm::{
     cursor::{MoveLeft, MoveTo},
@@ -16,7 +18,6 @@ use std::{
     io::{self, stdout, Stdout, Write},
     path::Path,
     sync::{Arc, Mutex},
-    thread::sleep,
 };
 
 /// Starts the terminal display
@@ -127,19 +128,23 @@ fn display_loop(stdout: Arc<Mutex<Stdout>>, _state: Arc<Mutex<MmmState>>) {
     }
 }
 
+/// Displays the paths of objects
+///
+/// * `stdout`: A thread safe reference to the crossterm terminal output
+/// * `_state`: Currently unused
 fn display_paths(
     stdout: Arc<Mutex<Stdout>>,
     _state: Arc<Mutex<MmmState>>,
 ) -> Result<(), std::io::Error> {
-    let mut stdout = stdout.lock().unwrap();
+    let mut screen = stdout.lock().unwrap();
     let cwd = std::env::current_dir().expect("Failed to get cwd");
     let dir_list = get_dir_list(&cwd).expect("Failed to get cwd dirlist");
     let mut y: u16 = 0;
-    stdout.queue(MoveTo(12, 0))?.flush()?;
+    screen.queue(MoveTo(12, 0))?.flush()?;
     for x in dir_list {
         let fileee = x.file_name().to_string_lossy().to_string();
         y += 1;
-        stdout
+        screen
             .queue(Print(format!("{}", fileee)))?
             .queue(MoveTo(12, y))?
             .flush()?;

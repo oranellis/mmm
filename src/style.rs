@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]
-enum ThinBorders {
+pub enum ThinBorders {
     NE,
     NS,
     NW,
@@ -24,7 +24,7 @@ impl From<ThinBorders> for char {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]
-enum ThickBorders {
+pub enum ThickBorders {
     NE,
     NS,
     NW,
