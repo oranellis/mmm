@@ -1,6 +1,8 @@
 use std::io;
 
-struct TerminalBoxes {
+use crate::style::ThickBorders;
+
+pub struct TerminalBoxes {
     columns: u16,
     rows: u16,
     border_bits: Vec<u8>,
@@ -51,16 +53,62 @@ impl TerminalBoxes {
         self.border_bits[index] = old_bits & add_bit;
     }
 
-    fn has_north() {}
-    fn has_east() {}
-    fn has_south() {}
-    fn has_west() {}
+    fn check_bit(&self, bitpos: u8, index: usize) -> bool {
+        return (self.border_bits[index] & (1 << bitpos)) != 0;
+    }
+
+    fn has_north(&self, column: u16, row: u16) -> bool {
+        if row == 0 {
+            return false;
+        }
+        let (bitpos, index) = coord_to_index(self.columns, column, row - 1);
+        return (self.border_bits[index] & (1 << bitpos)) != 0;
+    }
+
+    fn has_east(&self, column: u16, row: u16) -> bool {
+        if column == self.columns - 1 {
+            return false;
+        }
+        let (bitpos, index) = coord_to_index(self.columns, column + 1, row);
+        return (self.border_bits[index] & (1 << bitpos)) != 0;
+    }
+
+    fn has_south(&self, column: u16, row: u16) -> bool {
+        if row == self.rows - 1 {
+            return false;
+        }
+        let (bitpos, index) = coord_to_index(self.columns, column, row + 1);
+        return (self.border_bits[index] & (1 << bitpos)) != 0;
+    }
+
+    fn has_west(&self, column: u16, row: u16) -> bool {
+        if column == 0 {
+            return false;
+        }
+        let (bitpos, index) = coord_to_index(self.columns, column - 1, row);
+        return (self.border_bits[index] & (1 << bitpos)) != 0;
+    }
 }
 
 impl std::fmt::Display for TerminalBoxes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut display_string = String::with_capacity(self.border_bits.len());
-        // TODO Make string output for drawing borders
-        write!(f, "{}", "")
+        for index in 0..self.border_bits.len() {
+            for bitpos in 0..7 {
+                let column = (bitpos + (8 * index)) as u16 % self.columns;
+                let row = (bitpos + (8 * index)) as u16 / self.columns;
+                if self.check_bit(bitpos as u8, index) {
+                    display_string.push(ThickBorders::from_directions(
+                        self.has_north(column, row),
+                        self.has_east(column, row),
+                        self.has_south(column, row),
+                        self.has_west(column, row),
+                    ));
+                } else {
+                    display_string.push(' ');
+                }
+            }
+        }
+        write!(f, "{}", display_string)
     }
 }

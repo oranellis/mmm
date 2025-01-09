@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 
+use boxes::TerminalBoxes;
 use crossterm::{
     cursor::MoveTo,
     event::{poll, read, Event, KeyCode, KeyEvent},
@@ -90,25 +91,11 @@ fn update_display(state: &MmmState) -> crossterm::Result<()> {
     let mut stdout = stdout();
     if let Some(layout) = generate_layout(state) {
         // Draw borders
+        let boxes = TerminalBoxes::new(state.terminal_size.0, state.terminal_size.1);
         stdout
             .queue(Clear(ClearType::All))?
             .queue(MoveTo(0, 0))?
-            .queue(Print(ThickBorders::ES))?;
-        for _ in 0..layout.parent_width {
-            stdout.queue(Print(ThickBorders::EW))?;
-        }
-        stdout.queue(Print(ThickBorders::ESW))?;
-        for _ in 0..layout.center_width {
-            stdout.queue(Print(ThickBorders::EW))?;
-        }
-        stdout.queue(Print(ThickBorders::ESW))?;
-        for _ in 0..layout.child_width {
-            stdout.queue(Print(ThickBorders::EW))?;
-        }
-        stdout
-            .queue(Print(ThickBorders::SW))?
-            .queue(MoveTo(0, layout.center_height))?;
-        stdout.flush()?;
+            .flush()?;
         Ok(())
     } else {
         Err(io::Error::new(

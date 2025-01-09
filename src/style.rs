@@ -25,20 +25,36 @@ impl From<ThinBorders> for char {
 #[derive(Debug, Clone, Copy)]
 #[repr(usize)]
 pub enum ThickBorders {
+    N,
+    E,
     NE,
+    S,
     NS,
-    NW,
     ES,
-    EW,
-    SW,
     NES,
+    W,
+    NW,
+    EW,
     NEW,
+    SW,
     NSW,
     ESW,
     NESW,
 }
 
-const THICK_BORDER_LOOKUP: [char; 11] = ['┗', '┃', '┛', '┏', '━', '┓', '┣', '┻', '┫', '┳', '╋'];
+const THICK_BORDER_LOOKUP: [char; 15] = [
+    '╹', '╺', '┗', '╻', '┃', '┏', '┣', '╸', '┛', '━', '┻', '┓', '┫', '┳', '╋',
+];
+
+impl ThickBorders {
+    pub fn from_directions(north: bool, east: bool, south: bool, west: bool) -> char {
+        let index = (north as usize)
+            & ((east as usize) << 1)
+            & ((south as usize) << 2)
+            & ((west as usize) << 3);
+        return THICK_BORDER_LOOKUP[index - 1];
+    }
+}
 
 impl From<ThickBorders> for char {
     fn from(value: ThickBorders) -> Self {
