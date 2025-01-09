@@ -1,13 +1,12 @@
 use std::{
-    fs::{self, DirEntry},
-    io,
+    fs, io,
     path::{Path, PathBuf},
 };
 
 /// Returns the size on the disk of a file or folder in bytes
 ///
 /// * `path`: The file or folder to get the size of
-fn get_path_size(path: &Path) -> io::Result<u64> {
+pub fn get_path_size(path: &Path) -> io::Result<u64> {
     let mut total_size = 0;
     if path.is_file() {
         total_size += fs::metadata(path)?.len();
@@ -21,14 +20,14 @@ fn get_path_size(path: &Path) -> io::Result<u64> {
     Ok(total_size)
 }
 
-fn get_dir_list(path: &Path) -> io::Result<Vec<DirEntry>> {
-    let dir_list: Vec<DirEntry> = fs::read_dir(path)?.filter_map(|entry| entry.ok()).collect();
+pub fn get_dir_list(path: &Path) -> io::Result<Vec<PathBuf>> {
+    let dir_list: Vec<PathBuf> = fs::read_dir(path)?
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .collect();
     Ok(dir_list)
 }
 
-fn parent_path_from(path: &Path) -> Option<PathBuf> {
-    match path.canonicalize() {
-        Ok(checked_path) => checked_path.parent().map(|p| p.to_path_buf()),
-        Err(_) => None,
-    }
+pub fn parent_path_from(path: &Path) -> Option<PathBuf> {
+    path.parent().map(|p| p.to_path_buf())
 }

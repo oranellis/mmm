@@ -1,33 +1,27 @@
 mod boxes;
+mod draw;
+mod events;
+mod layout;
 
-use std::{
-    io::{self, stdout, Write},
-    time::Duration,
+use crate::{
+    datatypes::MmmState,
+    filesystem::{get_dir_list, parent_path_from},
 };
-
-use boxes::TerminalBoxes;
 use crossterm::{
-    cursor::MoveTo,
-    event::{poll, read, Event, KeyCode, KeyEvent},
-    style::{Print, ResetColor},
+    event::{poll, read, Event},
+    style::ResetColor,
     terminal::{
-        disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen,
-        LeaveAlternateScreen, SetTitle,
+        disable_raw_mode, enable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen,
+        SetTitle,
     },
     ExecutableCommand, QueueableCommand,
 };
-
-use crate::{datatypes::MmmState, style::ThickBorders};
-
-const PARENT_PERCENTAGE: f32 = 0.2; // As a fraction
-const CENTER_PERCENTAGE: f32 = 0.5; // As a fraction
-
-struct MmmLayout {
-    parent_width: u16,
-    center_width: u16,
-    child_width: u16,
-    center_height: u16,
-}
+use draw::{draw_files, draw_outline};
+use events::{process_key_press, process_resize_event};
+use std::{
+    io::{stdout, Write},
+    time::Duration,
+};
 
 pub fn start_display() -> crossterm::Result<()> {
     stdout()
@@ -47,7 +41,9 @@ pub fn stop_display() -> crossterm::Result<()> {
 }
 
 pub fn terminal_interaction(state: &mut MmmState) {
-    if poll(Duration::from_millis(100)).unwrap() {
+    let old_state = state.clone();
+    state.initialised = true;
+    if poll(Duration::from_millis(500)).unwrap() {
         let event = read().unwrap();
         match event {
             Event::Key(keyevent) => process_key_press(state, keyevent),
@@ -55,52 +51,13 @@ pub fn terminal_interaction(state: &mut MmmState) {
             _ => {}
         }
     }
-    update_display(state).unwrap();
-}
-
-fn generate_layout(state: &MmmState) -> Option<MmmLayout> {
-    let (columns, rows) = state.terminal_size;
-    if columns < 16 || rows < 3 {
-        return None;
-    }
-
-    let available_columns = columns - 4;
-    let parent_width = (available_columns as f32 * PARENT_PERCENTAGE).round() as u16;
-    let center_width = (available_columns as f32 * CENTER_PERCENTAGE).round() as u16;
-    let child_width = available_columns - parent_width - center_width;
-
-    Some(MmmLayout {
-        parent_width,
-        center_width,
-        child_width,
-        center_height: (rows + 1) / 2,
-    })
-}
-
-fn process_key_press(state: &mut MmmState, key_event: KeyEvent) {
-    if key_event.code == KeyCode::Esc {
-        state.quit = true;
-    }
-}
-
-fn process_resize_event(state: &mut MmmState, columns: u16, rows: u16) {
-    state.terminal_size = (columns, rows);
-}
-
-fn update_display(state: &MmmState) -> crossterm::Result<()> {
-    let mut stdout = stdout();
-    if let Some(layout) = generate_layout(state) {
-        // Draw borders
-        let boxes = TerminalBoxes::new(state.terminal_size.0, state.terminal_size.1);
-        stdout
-            .queue(Clear(ClearType::All))?
-            .queue(MoveTo(0, 0))?
-            .flush()?;
-        Ok(())
-    } else {
-        Err(io::Error::new(
-            io::ErrorKind::Other,
-            "Cannot generate_layout",
-        ))
+    let layout = layout::generate_layout(state).unwrap();
+    if *state != old_state {
+        draw_outline(state, &layout).unwrap();
+        state.current_dir_list = Some(get_dir_list(&state.current_path).unwrap());
+        state.parent_dir_list =
+            Some(get_dir_list(&parent_path_from(&state.current_path).unwrap()).unwrap());
+        draw_files(state, &layout).unwrap();
+        stdout().flush().unwrap();
     }
 }

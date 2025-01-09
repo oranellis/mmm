@@ -42,17 +42,17 @@ pub enum ThickBorders {
     NESW,
 }
 
-const THICK_BORDER_LOOKUP: [char; 15] = [
-    '╹', '╺', '┗', '╻', '┃', '┏', '┣', '╸', '┛', '━', '┻', '┓', '┫', '┳', '╋',
+const THICK_BORDER_LOOKUP: [char; 16] = [
+    ' ', '╹', '╺', '┗', '╻', '┃', '┏', '┣', '╸', '┛', '━', '┻', '┓', '┫', '┳', '╋',
 ];
 
 impl ThickBorders {
     pub fn from_directions(north: bool, east: bool, south: bool, west: bool) -> char {
         let index = (north as usize)
-            & ((east as usize) << 1)
-            & ((south as usize) << 2)
-            & ((west as usize) << 3);
-        return THICK_BORDER_LOOKUP[index - 1];
+            | ((east as usize) << 1)
+            | ((south as usize) << 2)
+            | ((west as usize) << 3);
+        return THICK_BORDER_LOOKUP[index];
     }
 }
 
