@@ -8,8 +8,9 @@ use crate::{
     filesystem::{get_dir_list, parent_path_from},
 };
 use crossterm::{
+    cursor::MoveTo,
     event::{poll, read, Event},
-    style::ResetColor,
+    style::{Print, ResetColor},
     terminal::{
         disable_raw_mode, enable_raw_mode, Clear, EnterAlternateScreen, LeaveAlternateScreen,
         SetTitle,
@@ -19,7 +20,7 @@ use crossterm::{
 use draw::{draw_files, draw_outline};
 use events::{process_key_press, process_resize_event};
 use std::{
-    io::{stdout, Write},
+    io::{self, stdout, Write},
     time::Duration,
 };
 
@@ -40,7 +41,7 @@ pub fn stop_display() -> crossterm::Result<()> {
     Ok(())
 }
 
-pub fn terminal_interaction(state: &mut MmmState) {
+pub fn terminal_interaction(state: &mut MmmState) -> io::Result<()> {
     let old_state = state.clone();
     state.initialised = true;
     if poll(Duration::from_millis(500)).unwrap() {
@@ -51,13 +52,21 @@ pub fn terminal_interaction(state: &mut MmmState) {
             _ => {}
         }
     }
-    let layout = layout::generate_layout(state).unwrap();
-    if *state != old_state {
-        draw_outline(state, &layout).unwrap();
-        state.current_dir_list = Some(get_dir_list(&state.current_path).unwrap());
-        state.parent_dir_list =
-            Some(get_dir_list(&parent_path_from(&state.current_path).unwrap()).unwrap());
-        draw_files(state, &layout).unwrap();
-        stdout().flush().unwrap();
+    if let Some(layout) = layout::generate_layout(state) {
+        if *state != old_state {
+            draw_outline(state, &layout)?;
+            state.current_dir_list = Some(get_dir_list(&state.current_path).unwrap());
+            state.parent_dir_list = parent_path_from(&state.current_path)
+                .map(|pathbuf| get_dir_list(&pathbuf).unwrap());
+            draw_files(state, &layout)?;
+            stdout().flush().unwrap();
+        }
+    } else {
+        stdout()
+            .queue(Clear(crossterm::terminal::ClearType::All))?
+            .queue(MoveTo(0, 0))?
+            .queue(Print("smol"))?
+            .flush()?;
     }
+    Ok(())
 }

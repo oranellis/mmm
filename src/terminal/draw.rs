@@ -29,12 +29,30 @@ pub fn draw_outline(state: &MmmState, layout: &MmmLayout) -> crossterm::Result<(
 
 pub fn draw_files(state: &MmmState, layout: &MmmLayout) -> crossterm::Result<()> {
     let mut stdout = stdout();
-    let mut ypos = 2;
-    let column_start = layout.parent_width + 1;
-    let max_width = (layout.center_width - 1) as usize;
-    stdout.queue(MoveTo(column_start, 1))?;
     let paths = state.current_dir_list.clone();
     if let Some(paths) = paths {
+        let mut ypos = 2;
+        let column_start = layout.parent_width + 1;
+        let max_width = (layout.center_width - 1) as usize;
+        stdout.queue(MoveTo(column_start, 1))?;
+        for path in paths {
+            stdout
+                .queue(Print(
+                    path.file_name()
+                        .and_then(|name| name.to_str())
+                        .map(|name| name.chars().take(max_width).collect())
+                        .unwrap_or_else(|| String::from("")),
+                ))?
+                .queue(MoveTo(column_start, ypos))?;
+            ypos += 1;
+        }
+    }
+    let paths = state.parent_dir_list.clone();
+    if let Some(paths) = paths {
+        let mut ypos = 2;
+        let column_start = 1;
+        let max_width = (layout.parent_width - 1) as usize;
+        stdout.queue(MoveTo(column_start, 1))?;
         for path in paths {
             stdout
                 .queue(Print(

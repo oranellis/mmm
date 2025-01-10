@@ -10,7 +10,9 @@ fn main() {
     let mut shared_state = MmmState::new();
     start_display().unwrap();
     loop {
-        terminal_interaction(&mut shared_state);
+        if let Err(_) = terminal_interaction(&mut shared_state) {
+            break;
+        }
         if shared_state.quit == true {
             break;
         }
