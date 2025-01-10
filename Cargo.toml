@@ -3,7 +3,12 @@ name = "mmm"
 version = "0.0.1"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-crossterm = "0.25.0"
+crossterm = { version = "0.25.0", features = ["event-stream"] }
+futures = "0.3.31"
+tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread", "time"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1

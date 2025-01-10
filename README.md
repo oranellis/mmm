@@ -15,3 +15,7 @@ This is currently a personal project to compliment my terminal workflow using a 
 - [ ] Implement nvim opener
 - [ ] Implement previewer (maybe)
 - [ ] Add cli options
+
+**Ideas**
+
+Navigation - I want to have the navigation such that you are typing a fuzzy search by default, then every space enters the directory with the best fuzzy match. Backspace clears any typed characters first then when the search string is empty it moves back a directory. Pressing space on a file rather than a directory will open nvim at either the git root of the file and open the file, or just open the file in nvim at the cwd.
