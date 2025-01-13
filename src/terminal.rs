@@ -1,7 +1,8 @@
+mod areas;
 mod boxes;
 mod draw;
 mod events;
-mod layout;
+pub mod layout;
 
 use crate::{
     datatypes::MmmState,
@@ -23,6 +24,12 @@ use std::{
     io::{self, stdout, Write},
     time::Duration,
 };
+
+#[derive(PartialEq, Clone, Copy)]
+pub struct Vec2d {
+    column: u16,
+    row: u16,
+}
 
 pub fn start_display() -> crossterm::Result<()> {
     stdout()
