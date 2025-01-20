@@ -6,11 +6,11 @@ on:
 jobs:
   test:
     name: Build and Test mmm
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -18,16 +18,6 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-
-      - name: Cache Cargo Registry
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
 
       - name: Build Project
         run: cargo build --verbose
