@@ -1,6 +1,6 @@
-# MMM - A tasty and feature rich rust terminal file browser
+# MMM - A tasty rust terminal file browser
 
-This is currently a personal project to compliment my terminal workflow using a combination of neovim, ssh, and other cli tools. It builds on the design philosophies of [nnn](https://github.com/jarun/nnn) while adding some vim-like modes and bindings to speed up operation.
+This is currently a personal project to compliment my terminal workflow using a combination of neovim, ssh, and other cli tools. It is focused on fuzzy finding and keyboard first navigation and is only for navigation and opening neovim.
 
 ## Development
 
