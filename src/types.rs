@@ -1,7 +1,9 @@
 use crate::{filesystem::MmmDirList, terminal::layout::MmmLayout};
 use std::{
+    cmp::min,
     ops::{Add, Sub},
     path::PathBuf,
+    u16,
 };
 
 // MmmState
@@ -37,6 +39,18 @@ impl MmmState {
             selected_entry: 0,
             terminal_size,
         }
+    }
+
+    pub fn search_cursor_pos(&self, search_box_padding: u16) -> Vec2d {
+        let cursor_right_dist = min(
+            search_box_padding + self.search_text.len() as u16,
+            self.layout.search_box_width,
+        );
+        self.layout.search_box_position + (cursor_right_dist, 0).into()
+    }
+
+    pub fn get_display_string_capacity(&self) -> usize {
+        self.terminal_size.col as usize + self.terminal_size.row as usize
     }
 }
 

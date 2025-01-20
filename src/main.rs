@@ -3,36 +3,24 @@ mod style;
 mod terminal;
 mod types;
 
-use crossterm::event::{Event, EventStream};
-use filesystem::dirlist::get_dir_list;
-use futures::{select, FutureExt, StreamExt};
-use terminal::{
-    composer::TerminalBuffer,
-    interactor::{start_display, stop_display},
+use crate::{
+    filesystem::dirlist::get_dir_list,
+    terminal::{
+        buffer::TerminalBuffer,
+        crossterm_wrapper::{flush, move_cursor, start_display, stop_display},
+    },
+    types::{MmmResult, MmmState},
 };
-use types::{MmmResult, MmmState};
-
-#[tokio::main]
-async fn main() {
-    start_display().expect("error starting display");
-    let mmm_result = mmm().await;
-    stop_display().expect("error stopping display");
-    match mmm_result {
-        Ok(_) => {
-            println!("Quitting mmm...");
-            std::process::exit(0)
-        }
-        Err(err) => {
-            eprintln!("An error ocurred, {}", err);
-            std::process::exit(1)
-        }
-    }
-}
+use crossterm::event::{Event, EventStream};
+use futures::{select, FutureExt, StreamExt};
 
 async fn mmm() -> MmmResult<()> {
     let mut shared_state = MmmState::new();
     let mut event_stream = EventStream::new();
-    let mut old_buffer = TerminalBuffer::new(String::new(), &shared_state.terminal_size);
+    let mut old_buffer = TerminalBuffer::new(
+        String::with_capacity(shared_state.get_display_string_capacity()),
+        &shared_state.terminal_size,
+    );
 
     loop {
         let mut timer = Box::pin(tokio::time::sleep(tokio::time::Duration::from_secs(10))).fuse();
@@ -59,11 +47,33 @@ async fn mmm() -> MmmResult<()> {
         }
 
         shared_state.current_dir_list = get_dir_list(&shared_state.current_path).unwrap();
-        let mut new_buffer = TerminalBuffer::new(String::new(), &shared_state.terminal_size);
+        let mut new_buffer = TerminalBuffer::new(
+            String::with_capacity(shared_state.get_display_string_capacity()),
+            &shared_state.terminal_size,
+        );
         new_buffer.add_layer(&shared_state.draw_outline()?);
         new_buffer.add_layer(&shared_state.draw_search_str()?);
-        old_buffer = new_buffer.print_buffer_diff(old_buffer)?;
+        old_buffer = new_buffer.queue_print_buffer_diff(old_buffer)?;
+        move_cursor(shared_state.search_cursor_pos(0))?;
+        flush()?;
     }
 
     Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+    start_display().expect("error starting display");
+    let mmm_result = mmm().await;
+    stop_display().expect("error stopping display");
+    match mmm_result {
+        Ok(_) => {
+            println!("Quitting mmm...");
+            std::process::exit(0)
+        }
+        Err(err) => {
+            eprintln!("An error ocurred, {}", err);
+            std::process::exit(1)
+        }
+    }
 }

@@ -36,7 +36,11 @@ impl TerminalBuffer {
                     new_buf.push(old_char)
                 }
             } else if let Some(new_char) = new_chars.next() {
-                new_buf.push(new_char)
+                if new_char != '�' {
+                    new_buf.push(new_char)
+                } else {
+                    new_buf.push(' ')
+                }
             } else {
                 break;
             }
@@ -68,19 +72,21 @@ pub fn split_into_writes(
     loop {
         let base_char_option = base_chars.next();
         let new_char_option = new_chars.next();
-
         if base_char_option.is_none() && new_char_option.is_none() {
             break;
         }
-        let (working_char, changed) = if base_char_option.is_none() {
-            (new_char_option.unwrap(), true)
+
+        let working_char;
+        let changed;
+        if base_char_option.is_none() {
+            working_char = new_char_option.unwrap();
+            changed = true;
         } else if new_char_option.is_none() {
-            (base_char_option.unwrap(), true)
+            working_char = base_char_option.unwrap();
+            changed = true;
         } else {
-            (
-                new_char_option.unwrap(),
-                new_char_option.unwrap() != base_char_option.unwrap(),
-            )
+            working_char = new_char_option.unwrap();
+            changed = new_char_option.unwrap() != base_char_option.unwrap();
         };
 
         if changed {

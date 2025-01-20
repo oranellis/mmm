@@ -1,5 +1,7 @@
 use std::io::{stdout, Write};
 
+use super::buffer::{split_into_writes, TerminalBuffer};
+use crate::types::{MmmResult, Vec2d};
 use crossterm::{
     cursor::MoveTo,
     style::{Print, ResetColor},
@@ -9,10 +11,6 @@ use crossterm::{
     },
     ExecutableCommand, QueueableCommand,
 };
-
-use crate::types::MmmResult;
-
-use super::composer::{split_into_writes, TerminalBuffer};
 
 pub fn start_display() -> crossterm::Result<()> {
     stdout()
@@ -33,12 +31,9 @@ pub fn stop_display() -> crossterm::Result<()> {
 
 impl TerminalBuffer {
     /// Prints the buffer to the screen
-    pub fn print_buffer(&self) -> MmmResult<()> {
+    pub fn queue_print_buffer(&self) -> MmmResult<()> {
         let mut stdout = stdout();
-        stdout
-            .queue(MoveTo(0, 0))?
-            .queue(Print(&self.buffer))?
-            .flush()?;
+        stdout.queue(MoveTo(0, 0))?.queue(Print(&self.buffer))?;
         Ok(())
     }
 
@@ -48,10 +43,10 @@ impl TerminalBuffer {
     /// simpler alternative which writes the whole contents of the screen.
     ///
     /// * `old_buffer`: The old screen buffer to diff against
-    pub fn print_buffer_diff(self, old_buffer: TerminalBuffer) -> MmmResult<TerminalBuffer> {
+    pub fn queue_print_buffer_diff(self, old_buffer: TerminalBuffer) -> MmmResult<TerminalBuffer> {
         let mut stdout = stdout();
         if self.terminal_size != old_buffer.terminal_size {
-            self.print_buffer()?;
+            self.queue_print_buffer()?;
         } else if let Some(write_chunks) = split_into_writes(&old_buffer.buffer, &self.buffer, 0) {
             for write_chunk in write_chunks {
                 stdout
@@ -65,8 +60,17 @@ impl TerminalBuffer {
                     ))?
                     .queue(Print(write_chunk.chunk))?;
             }
-            stdout.flush()?;
         }
         Ok(self)
     }
+}
+
+pub fn move_cursor(position: Vec2d) -> MmmResult<()> {
+    stdout().queue(MoveTo(position.col, position.row))?;
+    Ok(())
+}
+
+pub fn flush() -> MmmResult<()> {
+    stdout().flush()?;
+    Ok(())
 }
