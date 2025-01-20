@@ -32,6 +32,7 @@ pub fn stop_display() -> crossterm::Result<()> {
 }
 
 impl TerminalBuffer {
+    /// Prints the buffer to the screen
     pub fn print_buffer(&self) -> MmmResult<()> {
         let mut stdout = stdout();
         stdout
@@ -41,32 +42,31 @@ impl TerminalBuffer {
         Ok(())
     }
 
-    pub fn print_buffer_diff(&mut self, new_buffer: TerminalBuffer) -> MmmResult<()> {
+    /// Prints the chunked diff between an old and new screen buffer, then returns self. Printing the diff saves
+    /// rewriting the entire contents of the screen every frame which should speed up displaying
+    /// although no benchmarks have been done to validate this. TerminalBuffer::print_buffer() is a
+    /// simpler alternative which writes the whole contents of the screen.
+    ///
+    /// * `old_buffer`: The old screen buffer to diff against
+    pub fn print_buffer_diff(self, old_buffer: TerminalBuffer) -> MmmResult<TerminalBuffer> {
         let mut stdout = stdout();
-        if new_buffer.terminal_size != self.terminal_size {
-            new_buffer.print_buffer()?;
-            *self = new_buffer;
-            panic!();
-        } else {
-            if let Some(write_chunks) = split_into_writes(&self.buffer, &new_buffer.buffer, 0) {
-                println!("{:?}", write_chunks);
-                panic!();
-                for write_chunk in write_chunks {
-                    stdout
-                        .queue(MoveTo(
-                            (write_chunk.position % new_buffer.terminal_size.col as usize)
-                                .try_into()
-                                .unwrap(),
-                            (write_chunk.position / new_buffer.terminal_size.col as usize)
-                                .try_into()
-                                .unwrap(),
-                        ))?
-                        .queue(Print(write_chunk.chunk))?;
-                }
-                stdout.flush()?;
-                *self = new_buffer;
+        if self.terminal_size != old_buffer.terminal_size {
+            self.print_buffer()?;
+        } else if let Some(write_chunks) = split_into_writes(&old_buffer.buffer, &self.buffer, 0) {
+            for write_chunk in write_chunks {
+                stdout
+                    .queue(MoveTo(
+                        (write_chunk.position % self.terminal_size.col as usize)
+                            .try_into()
+                            .unwrap(),
+                        (write_chunk.position / self.terminal_size.col as usize)
+                            .try_into()
+                            .unwrap(),
+                    ))?
+                    .queue(Print(write_chunk.chunk))?;
             }
+            stdout.flush()?;
         }
-        Ok(())
+        Ok(self)
     }
 }

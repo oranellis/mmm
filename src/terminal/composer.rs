@@ -1,22 +1,9 @@
-use std::cmp::max;
-
 use crate::types::Vec2d;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct WriteChunk {
     pub position: usize,
     pub chunk: String,
-}
-
-impl WriteChunk {
-    pub fn new(position: usize, first_char: char) -> Self {
-        let mut init_string = String::new();
-        init_string.push(first_char);
-        WriteChunk {
-            position,
-            chunk: init_string,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -33,7 +20,6 @@ impl TerminalBuffer {
         }
     }
 
-    // Not worki fix plz
     pub fn add_layer(&mut self, layer: &str) -> &mut Self {
         let mut new_buf = String::new();
         let mut new_chars = layer.chars();
@@ -49,12 +35,10 @@ impl TerminalBuffer {
                 } else {
                     new_buf.push(old_char)
                 }
+            } else if let Some(new_char) = new_chars.next() {
+                new_buf.push(new_char)
             } else {
-                if let Some(new_char) = new_chars.next() {
-                    new_buf.push(new_char)
-                } else {
-                    break;
-                }
+                break;
             }
         }
         self.buffer = new_buf;
@@ -76,15 +60,15 @@ pub fn split_into_writes(
     let mut chunks: Vec<WriteChunk> = vec![];
     let mut base_chars = base_string.chars();
     let mut new_chars = compare_string.chars();
-    let mut gap_counter = chunk_distance + 1;
-    let mut staging_string_option: Option<String> = None;
-    let mut staging_string_start: usize = 0;
-    let mut gap_string_option: Option<String> = None;
+    let mut gap_distance = chunk_distance + 1;
+    let mut staging_chunk_option: Option<WriteChunk> = None;
+    let mut gap_string = String::new();
     let mut index: usize = 0;
 
     loop {
         let base_char_option = base_chars.next();
         let new_char_option = new_chars.next();
+
         if base_char_option.is_none() && new_char_option.is_none() {
             break;
         }
@@ -100,32 +84,51 @@ pub fn split_into_writes(
         };
 
         if changed {
-            if let Some(gap_string) = &gap_string_option {
-                match &mut staging_string_option {
-                    Some(staging_string) => staging_string.push_str(&gap_string),
+            gap_distance = 0;
+            if !gap_string.is_empty() {
+                match &mut staging_chunk_option {
+                    Some(staging_chunk) => staging_chunk.chunk.push_str(&gap_string),
                     None => {
-                        staging_string_option = Some(gap_string.to_string());
-                        staging_string_start = index;
+                        staging_chunk_option = Some(WriteChunk {
+                            chunk: gap_string.to_string(),
+                            position: index,
+                        });
                     }
                 }
-                gap_string_option = None;
+                gap_string = String::new();
             }
-            match &mut staging_string_option {
-                Some(staging_string) => staging_string.push(working_char),
+            match &mut staging_chunk_option {
+                Some(staging_chunk) => staging_chunk.chunk.push(working_char),
                 None => {
-                    staging_string_option = Some(working_char.to_string());
-                    staging_string_start = index;
+                    staging_chunk_option = Some(WriteChunk {
+                        chunk: working_char.to_string(),
+                        position: index,
+                    });
+                }
+            }
+        } else {
+            gap_distance += 1;
+            if gap_distance <= chunk_distance {
+                gap_string.push(working_char);
+            } else {
+                gap_string = String::new();
+                if let Some(staging_chunk) = staging_chunk_option {
+                    chunks.push(staging_chunk);
+                    staging_chunk_option = None;
                 }
             }
         }
-
-        // What are the cases
-        //
-        // character is changed -> push gap string onto staging string if present, gap_counter to 0
-        // character is the same -> if gap_counter < chunk dist then push char onto gap string else
-        // drop gap_string and push WriteChunk to list, increment gap_counter
+        index += 1;
     }
-    None
+
+    if let Some(staging_chunk) = staging_chunk_option {
+        chunks.push(staging_chunk);
+    }
+    if !chunks.is_empty() {
+        Some(chunks)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -165,6 +168,11 @@ mod tests {
         let res = split_into_writes(&str1, &cmp_str, 0);
         println!("{:?}", res);
         assert!(res.is_some());
+        if let Some(some_res) = res {
+            let mut res_iter = some_res.iter();
+            assert!(res_iter.next().unwrap().chunk == " go zoom");
+            assert!(res_iter.next().is_none());
+        }
     }
 
     #[test]
@@ -173,7 +181,12 @@ mod tests {
         let cmp_str = "plane".to_string();
         let res = split_into_writes(&str1, &cmp_str, 0);
         println!("{:?}", res);
-        assert!(res.is_none());
+        assert!(res.is_some());
+        if let Some(some_res) = res {
+            let mut res_iter = some_res.iter();
+            assert!(res_iter.next().unwrap().chunk == " go zoom");
+            assert!(res_iter.next().is_none());
+        }
     }
 
     #[test]

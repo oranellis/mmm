@@ -28,7 +28,6 @@ impl MmmState {
     pub fn draw_search_str(&self) -> MmmResult<String> {
         let layout = &self.layout;
         let cols = &self.terminal_size.col;
-        let rows = &self.terminal_size.row;
         let pos = (layout.search_box_position.row * cols) + (layout.search_box_position.col);
         let mut ret_string = String::new();
         ret_string.push_str(&"�".repeat(pos.into()));
