@@ -3,7 +3,6 @@ use std::{
     cmp::min,
     ops::{Add, Sub},
     path::PathBuf,
-    u16,
 };
 
 // MmmState

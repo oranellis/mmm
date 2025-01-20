@@ -6,6 +6,7 @@ use std::{
 
 use super::{MmmDirEntry, MmmDirList};
 
+#[allow(unused)]
 /// Returns the size on the disk of a file or folder in bytes
 ///
 /// * `path`: The file or folder to get the size of
@@ -69,6 +70,7 @@ pub fn get_dir_list(path: &Path) -> MmmResult<Option<MmmDirList>> {
     Ok(Some(dir_list))
 }
 
+#[allow(unused)]
 pub fn parent_path_from(path: &Path) -> Option<PathBuf> {
     path.parent().map(|p| p.to_path_buf())
 }
