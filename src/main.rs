@@ -29,8 +29,8 @@ async fn mmm() -> MmmResult<()> {
 
         select! {
             terminal_event_local = terminal_event_future => {
-                if let Some(Ok(te)) = terminal_event_local {
-                    terminal_event = Some(te);
+                if let Some(te) = terminal_event_local {
+                    terminal_event = Some(te?);
                 }
             }
             _ = timer => {}
