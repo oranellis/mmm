@@ -1,4 +1,4 @@
-# MMM - A tasty rust terminal file browser
+# mmm - A tasty rust terminal file browser
 
 This is currently a personal project to compliment my terminal workflow using a combination of neovim, ssh, and other cli tools. It is focused on fuzzy finding and keyboard first navigation and is only for navigation and opening neovim.
 
