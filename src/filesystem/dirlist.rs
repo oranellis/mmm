@@ -24,14 +24,9 @@ pub fn get_path_size(path: &Path) -> MmmResult<u64> {
     Ok(total_size)
 }
 
-pub fn get_dir_list(path: &Path) -> MmmResult<Option<MmmDirList>> {
+pub fn get_dir_list(path: &Path) -> MmmResult<MmmDirList> {
     let mut dir_list = MmmDirList::new(path.to_path_buf());
-    let mut entry_iter = fs::read_dir(path)?
-        .filter_map(|entry| entry.ok())
-        .peekable();
-    if entry_iter.peek().is_none() {
-        return Ok(None);
-    }
+    let entry_iter = fs::read_dir(path)?.filter_map(|entry| entry.ok());
     for entry in entry_iter {
         if let Ok(file_type) = entry.file_type() {
             if file_type.is_file() {
@@ -67,7 +62,7 @@ pub fn get_dir_list(path: &Path) -> MmmResult<Option<MmmDirList>> {
             }
         }
     }
-    Ok(Some(dir_list))
+    Ok(dir_list)
 }
 
 #[allow(unused)]

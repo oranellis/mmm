@@ -46,7 +46,12 @@ async fn mmm() -> MmmResult<()> {
             break;
         }
 
-        shared_state.current_dir_list = get_dir_list(&shared_state.current_path).unwrap();
+        shared_state.current_dir_list = Some(get_dir_list(&shared_state.current_path)?);
+        shared_state.parent_dir_list = shared_state
+            .current_path
+            .parent()
+            .map(get_dir_list)
+            .transpose()?;
         let mut new_buffer = TerminalBuffer::new(
             String::with_capacity(shared_state.get_display_string_capacity()),
             &shared_state.terminal_size,

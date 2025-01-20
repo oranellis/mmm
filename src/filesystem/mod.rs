@@ -1,4 +1,5 @@
 pub mod dirlist;
+pub mod filter;
 
 use std::{ffi::OsString, path::PathBuf};
 
