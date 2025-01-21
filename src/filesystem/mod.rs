@@ -3,7 +3,7 @@ pub mod filter;
 
 use std::{ffi::OsString, path::PathBuf};
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum MmmDirEntry {
     File {
         name: OsString,
@@ -23,6 +23,25 @@ pub enum MmmDirEntry {
         name: OsString,
         path: PathBuf,
     },
+}
+
+impl MmmDirEntry {
+    pub fn get_path(&self) -> &PathBuf {
+        match self {
+            MmmDirEntry::File { path, .. } => path,
+            MmmDirEntry::Directory { path, .. } => path,
+            MmmDirEntry::Link { path, .. } => path,
+            MmmDirEntry::Other { path, .. } => path,
+        }
+    }
+    pub fn get_name(&self) -> &OsString {
+        match self {
+            MmmDirEntry::File { name, .. } => name,
+            MmmDirEntry::Directory { name, .. } => name,
+            MmmDirEntry::Link { name, .. } => name,
+            MmmDirEntry::Other { name, .. } => name,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]

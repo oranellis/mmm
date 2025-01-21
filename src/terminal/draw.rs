@@ -1,5 +1,23 @@
 use super::boxes::TerminalBoxes;
-use crate::types::{MmmResult, MmmState};
+use crate::{
+    filesystem::MmmDirEntry,
+    types::{MmmResult, MmmState},
+};
+
+/// A chat gipity special
+///
+/// * `input`: The string to sorten
+/// * `max_len`: The max length
+fn clamp_string(input: &str, max_len: usize) -> &str {
+    if input.chars().count() > max_len {
+        input
+            .char_indices()
+            .nth(max_len)
+            .map_or(input, |(idx, _)| &input[..idx])
+    } else {
+        input
+    }
+}
 
 impl MmmState {
     pub fn draw_outline(&self) -> MmmResult<String> {
@@ -25,13 +43,38 @@ impl MmmState {
         Ok(boxes.to_string())
     }
 
-    pub fn draw_search_str(&self) -> MmmResult<String> {
+    pub fn draw_search_str(&self) -> String {
         let layout = &self.layout;
         let cols = &self.terminal_size.col;
-        let pos = (layout.search_box_position.row * cols) + (layout.search_box_position.col);
+        let pos = (layout.search_box_position.row * cols) + layout.search_box_position.col;
         let mut ret_string = String::new();
         ret_string.push_str(&"�".repeat(pos.into()));
         ret_string.push_str(&self.search_text);
-        Ok(ret_string)
+        ret_string
+    }
+
+    pub fn draw_current_dir(&self, entries: Option<Vec<MmmDirEntry>>) -> String {
+        let layout = &self.layout;
+        let mut line = 0;
+        let mut ret_string = String::new();
+        if let Some(entries) = entries {
+            for entry in entries {
+                let cols = self.terminal_size.col;
+                let desired_len = ((layout.currentdir_position.row + line) as usize
+                    * cols as usize)
+                    + layout.currentdir_position.col as usize;
+                let entry_display_string = &entry.get_name().to_string_lossy();
+                ret_string.push_str(&"�".repeat(desired_len - ret_string.chars().count()));
+                ret_string.push_str(clamp_string(
+                    entry_display_string,
+                    layout.currentdir_size.col as usize,
+                ));
+                line += 1;
+                if line > layout.currentdir_size.row {
+                    break;
+                }
+            }
+        }
+        ret_string
     }
 }

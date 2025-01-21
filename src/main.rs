@@ -4,7 +4,7 @@ mod terminal;
 mod types;
 
 use crate::{
-    filesystem::dirlist::get_dir_list,
+    filesystem::{dirlist::get_dir_list, filter::filter_files},
     terminal::{
         buffer::TerminalBuffer,
         crossterm_wrapper::{flush, move_cursor, start_display, stop_display},
@@ -52,12 +52,21 @@ async fn mmm() -> MmmResult<()> {
             .parent()
             .map(get_dir_list)
             .transpose()?;
+
+        let current_dir_display_list = shared_state.current_dir_list.as_ref().map(|cdl| {
+            filter_files(
+                cdl,
+                &shared_state.search_text,
+                shared_state.layout.currentdir_size.row.into(),
+            )
+        });
         let mut new_buffer = TerminalBuffer::new(
             String::with_capacity(shared_state.get_display_string_capacity()),
             &shared_state.terminal_size,
         );
         new_buffer.add_layer(&shared_state.draw_outline()?);
-        new_buffer.add_layer(&shared_state.draw_search_str()?);
+        new_buffer.add_layer(&shared_state.draw_search_str());
+        new_buffer.add_layer(&shared_state.draw_current_dir(current_dir_display_list));
         old_buffer = new_buffer.queue_print_buffer_diff(old_buffer)?;
         move_cursor(shared_state.search_cursor_pos(0))?;
         flush()?;
