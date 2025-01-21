@@ -15,6 +15,7 @@ use crate::{
 use crossterm::event::{Event, EventStream};
 use futures::{select, FutureExt, StreamExt};
 use terminal::draw::draw_dir;
+use tokio::time::{sleep, Duration};
 
 async fn mmm() -> MmmResult<()> {
     let mut shared_state = MmmState::new();
@@ -26,11 +27,12 @@ async fn mmm() -> MmmResult<()> {
     let mut one_time_trigger = Box::pin(async {}.fuse());
 
     loop {
-        let mut timer = Box::pin(tokio::time::sleep(tokio::time::Duration::from_secs(10))).fuse();
+        // wait for a year before updating, just a placeholder for interrupting logic
+        let mut timer = Box::pin(sleep(Duration::from_secs(31536000))).fuse();
         let mut terminal_event_future = event_stream.next().fuse();
         let mut terminal_event = None;
 
-        // Wait for an event
+        // Wait for an event, the only async section, is async for the event stream to work
         select! {
             terminal_event_local = terminal_event_future => {
                 if let Some(te) = terminal_event_local {
