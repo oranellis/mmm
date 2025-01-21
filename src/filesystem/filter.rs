@@ -1,34 +1,5 @@
-use std::cmp::Ordering;
-
 use super::{MmmDirEntry, MmmDirList};
-
-fn filter_match(base: &str, filter: &str) -> (bool, i32) {
-    if filter.is_empty() {
-        return (true, 0);
-    };
-    let mut finished_filter = false;
-    let mut filter_iter = filter.chars();
-    let mut test_char = filter_iter
-        .next()
-        .expect("non empty string assertion failed");
-    let mut score = 0;
-    for (index, base_char) in base.char_indices() {
-        if base_char == test_char {
-            score += index as i32;
-            if let Some(next_char) = filter_iter.next() {
-                test_char = next_char;
-            } else {
-                finished_filter = true;
-                break;
-            }
-        }
-    }
-    if finished_filter {
-        (true, score)
-    } else {
-        (false, 0)
-    }
-}
+use std::cmp::Ordering;
 
 #[derive(Clone, Debug)]
 struct ScoredDirEntry {
@@ -63,31 +34,50 @@ impl Eq for ScoredDirEntry {}
 /// * `filter`: The filter string to match against
 /// * `count`: The maximum number of elements returned
 pub fn filter_files(dir_list: &MmmDirList, filter: &str, count: usize) -> Vec<MmmDirEntry> {
-    // ok how would I go about a filter, I think there needs to be two seperate steps, the
-    // filtering and then the scoring. They are going to be linked by the filter string but
-    // they need to be done seperately in that order.
-    //
-    // OK first the filter, probably going to make an O(n) solution by just looping through the
-    // dirlist and checking if some string patterns match. I think I'll actually split this out
-    // into another function to check if the filter matches.
-    //
-    // For the filtering this is way more advanced, there is probably some complicated
-    // combinatorics or something that solves this in an elegant way but I think I'm just going to
-    // bash it out and see what sticks.
-    let mut filtered_list: Vec<ScoredDirEntry> = vec![];
-    for dir_entry in &dir_list.entries {
-        let (matches, score) = filter_match(&dir_entry.get_path().to_string_lossy(), filter);
-        if matches {
-            filtered_list.push(ScoredDirEntry {
-                dir_entry: dir_entry.clone(),
+    let mut filtered_list: Vec<ScoredDirEntry> = dir_list
+        .entries
+        .iter()
+        .filter_map(|entry| {
+            filter_match(&entry.get_name().to_string_lossy(), filter).map(|score| ScoredDirEntry {
+                dir_entry: entry.clone(),
                 score,
-            });
-        }
-    }
+            })
+        })
+        .collect();
     filtered_list.sort();
     filtered_list
         .into_iter()
         .take(count)
         .map(|sde| sde.dir_entry)
         .collect()
+}
+
+fn filter_match(base: &str, filter: &str) -> Option<i32> {
+    if filter.is_empty() {
+        return Some(0);
+    };
+    let mut finished_filter = false;
+    let mut score = 0;
+    let mut filter_iter = filter.chars();
+    let mut test_char = filter_iter
+        .next()
+        .expect("non empty string assertion failed");
+    for (index, base_char) in base.char_indices() {
+        if base_char.to_ascii_lowercase() == test_char.to_ascii_lowercase() {
+            score += (index as i32) + 1;
+            let next_char_option = filter_iter.next();
+            match next_char_option {
+                Some(next_char) => test_char = next_char,
+                None => {
+                    finished_filter = true;
+                    break;
+                }
+            }
+        }
+    }
+    if finished_filter {
+        Some(score)
+    } else {
+        None
+    }
 }

@@ -26,6 +26,7 @@ pub enum MmmDirEntry {
 }
 
 impl MmmDirEntry {
+    #[allow(unused)]
     pub fn get_path(&self) -> &PathBuf {
         match self {
             MmmDirEntry::File { path, .. } => path,

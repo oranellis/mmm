@@ -31,10 +31,10 @@ pub fn stop_display() -> crossterm::Result<()> {
 
 impl TerminalBuffer {
     /// Prints the buffer to the screen
-    pub fn queue_print_buffer(&self) -> MmmResult<()> {
+    pub fn queue_print_buffer(self) -> MmmResult<TerminalBuffer> {
         let mut stdout = stdout();
         stdout.queue(MoveTo(0, 0))?.queue(Print(&self.buffer))?;
-        Ok(())
+        Ok(self)
     }
 
     /// Prints the chunked diff between an old and new screen buffer, then returns self. Printing the diff saves
@@ -46,7 +46,7 @@ impl TerminalBuffer {
     pub fn queue_print_buffer_diff(self, old_buffer: TerminalBuffer) -> MmmResult<TerminalBuffer> {
         let mut stdout = stdout();
         if self.terminal_size != old_buffer.terminal_size {
-            self.queue_print_buffer()?;
+            return self.queue_print_buffer();
         } else if let Some(write_chunks) = split_into_writes(&old_buffer.buffer, &self.buffer, 0) {
             for write_chunk in write_chunks {
                 stdout

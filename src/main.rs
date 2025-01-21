@@ -1,3 +1,4 @@
+mod debug;
 mod filesystem;
 mod style;
 mod terminal;
@@ -27,6 +28,7 @@ async fn mmm() -> MmmResult<()> {
         let mut terminal_event_future = event_stream.next().fuse();
         let mut terminal_event = None;
 
+        // Wait for an event
         select! {
             terminal_event_local = terminal_event_future => {
                 if let Some(te) = terminal_event_local {
@@ -46,6 +48,7 @@ async fn mmm() -> MmmResult<()> {
             break;
         }
 
+        // Get filesystem information
         shared_state.current_dir_list = Some(get_dir_list(&shared_state.current_path)?);
         shared_state.parent_dir_list = shared_state
             .current_path
@@ -53,6 +56,7 @@ async fn mmm() -> MmmResult<()> {
             .map(get_dir_list)
             .transpose()?;
 
+        // Filter and sort display lists
         let current_dir_display_list = shared_state.current_dir_list.as_ref().map(|cdl| {
             filter_files(
                 cdl,
@@ -60,6 +64,8 @@ async fn mmm() -> MmmResult<()> {
                 shared_state.layout.currentdir_size.row.into(),
             )
         });
+
+        // Create and display full terminal buffer
         let mut new_buffer = TerminalBuffer::new(
             String::with_capacity(shared_state.get_display_string_capacity()),
             &shared_state.terminal_size,
