@@ -5,6 +5,8 @@ mod style;
 mod terminal;
 mod types;
 
+use std::{fs::File, io::Write, path::PathBuf};
+
 use crate::{
     filesystem::{dirlist::get_dir_list, filter::filter_files},
     terminal::{
@@ -19,7 +21,7 @@ use nvim::{command_setup, command_teardown};
 use terminal::{draw::draw_dir, events::MmmEventType};
 use tokio::time::{sleep, Duration};
 
-async fn mmm() -> MmmResult<()> {
+async fn mmm() -> MmmResult<PathBuf> {
     let mut shared_state = MmmState::new();
     let mut event_stream = EventStream::new();
     let mut old_buffer = TerminalBuffer::new(
@@ -164,7 +166,7 @@ async fn mmm() -> MmmResult<()> {
         flush()?;
     }
 
-    Ok(())
+    Ok(shared_state.current_path)
 }
 
 #[tokio::main]
@@ -173,8 +175,11 @@ async fn main() {
     let mmm_result = mmm().await;
     stop_display().expect("error stopping display");
     match mmm_result {
-        Ok(_) => {
-            println!("Quitting mmm...");
+        Ok(path) => {
+            let file_path = "/tmp/mmm.path";
+            let mut file = File::create(file_path).expect("Failed to create or open the temp file");
+            file.write_all(path.to_string_lossy().as_bytes())
+                .expect("Failed to write to temp file");
             std::process::exit(0)
         }
         Err(err) => {
