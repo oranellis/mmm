@@ -33,7 +33,7 @@ impl Eq for ScoredDirEntry {}
 /// * `dir_list`: The list of paths to filter
 /// * `filter`: The filter string to match against
 /// * `count`: The maximum number of elements returned
-pub fn filter_files(dir_list: &MmmDirList, filter: &str, count: usize) -> Vec<MmmDirEntry> {
+pub fn filter_files(dir_list: &MmmDirList, filter: &str, count: usize) -> MmmDirList {
     let mut filtered_list: Vec<ScoredDirEntry> = dir_list
         .entries
         .iter()
@@ -45,11 +45,14 @@ pub fn filter_files(dir_list: &MmmDirList, filter: &str, count: usize) -> Vec<Mm
         })
         .collect();
     filtered_list.sort();
-    filtered_list
-        .into_iter()
-        .take(count)
-        .map(|sde| sde.dir_entry)
-        .collect()
+    MmmDirList {
+        path: dir_list.path.to_owned(),
+        entries: filtered_list
+            .into_iter()
+            .take(count)
+            .map(|sde| sde.dir_entry)
+            .collect(),
+    }
 }
 
 fn filter_match(base: &str, filter: &str) -> Option<i32> {

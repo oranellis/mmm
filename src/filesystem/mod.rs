@@ -47,8 +47,8 @@ impl MmmDirEntry {
 
 #[derive(Debug, PartialEq)]
 pub struct MmmDirList {
-    path: PathBuf,
-    entries: Vec<MmmDirEntry>,
+    pub path: PathBuf,
+    pub entries: Vec<MmmDirEntry>,
 }
 
 impl MmmDirList {

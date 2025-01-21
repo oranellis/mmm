@@ -14,6 +14,7 @@ use crate::{
 };
 use crossterm::event::{Event, EventStream};
 use futures::{select, FutureExt, StreamExt};
+use terminal::draw::draw_dir;
 
 async fn mmm() -> MmmResult<()> {
     let mut shared_state = MmmState::new();
@@ -64,6 +65,10 @@ async fn mmm() -> MmmResult<()> {
                 shared_state.layout.currentdir_size.row.into(),
             )
         });
+        let parent_dir_display_list = shared_state
+            .parent_dir_list
+            .as_ref()
+            .map(|pdl| filter_files(pdl, "", shared_state.layout.parentdir_size.row.into()));
 
         // Create and display full terminal buffer
         let mut new_buffer = TerminalBuffer::new(
@@ -72,7 +77,18 @@ async fn mmm() -> MmmResult<()> {
         );
         new_buffer.add_layer(&shared_state.draw_outline()?);
         new_buffer.add_layer(&shared_state.draw_search_str());
-        new_buffer.add_layer(&shared_state.draw_current_dir(current_dir_display_list));
+        new_buffer.add_layer(&draw_dir(
+            current_dir_display_list,
+            &shared_state.layout.currentdir_position,
+            &shared_state.layout.currentdir_size,
+            &shared_state.terminal_size.col,
+        ));
+        new_buffer.add_layer(&draw_dir(
+            parent_dir_display_list,
+            &shared_state.layout.parentdir_position,
+            &shared_state.layout.parentdir_size,
+            &shared_state.terminal_size.col,
+        ));
         old_buffer = new_buffer.queue_print_buffer_diff(old_buffer)?;
         move_cursor(shared_state.search_cursor_pos(0))?;
         flush()?;
