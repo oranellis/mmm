@@ -18,7 +18,9 @@ impl MmmState {
                 self.search_text.push(c);
             }
             KeyCode::Backspace => {
-                self.search_text.pop();
+                if !self.search_text.is_empty() {
+                    self.search_text = String::new();
+                }
             }
             _ => {}
         }
