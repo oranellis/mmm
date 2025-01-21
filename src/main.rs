@@ -23,6 +23,7 @@ async fn mmm() -> MmmResult<()> {
         String::with_capacity(shared_state.get_display_string_capacity()),
         &shared_state.terminal_size,
     );
+    let mut one_time_trigger = Box::pin(async {}.fuse());
 
     loop {
         let mut timer = Box::pin(tokio::time::sleep(tokio::time::Duration::from_secs(10))).fuse();
@@ -35,8 +36,9 @@ async fn mmm() -> MmmResult<()> {
                 if let Some(te) = terminal_event_local {
                     terminal_event = Some(te?);
                 }
-            }
-            _ = timer => {}
+            },
+            _ = one_time_trigger => {},
+            _ = timer => {},
         }
         if let Some(event) = terminal_event {
             match event {
