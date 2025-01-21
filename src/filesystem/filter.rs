@@ -44,6 +44,13 @@ pub fn filter_files(dir_list: &MmmDirList, filter: &str, count: usize) -> MmmDir
             })
         })
         .collect();
+    filtered_list.sort_unstable_by_key(|dir_entry| {
+        dir_entry
+            .dir_entry
+            .get_name()
+            .to_str()
+            .map(|s| s.to_string())
+    });
     filtered_list.sort();
     MmmDirList {
         path: dir_list.path.to_owned(),

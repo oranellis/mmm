@@ -1,6 +1,13 @@
 use super::layout::MmmLayout;
 use crate::types::{MmmState, Vec2d};
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+pub enum MmmEventType {
+    Space,
+    Enter,
+    NextEntry,
+    PrevEntry,
+}
 
 impl MmmState {
     pub fn process_resize_event(&mut self, new_size: Vec2d) {
@@ -8,14 +15,19 @@ impl MmmState {
         self.layout = MmmLayout::from_size(new_size.col, new_size.row);
     }
 
-    pub fn process_key_press(&mut self, key_event: KeyEvent) {
+    pub fn process_key_press(&mut self, key_event: KeyEvent) -> Option<MmmEventType> {
         if key_event.code == KeyCode::Esc {
             self.quit = true;
         }
+        let shift = key_event.modifiers.contains(KeyModifiers::SHIFT);
         match key_event.code {
             KeyCode::Esc => self.quit = true,
             KeyCode::Char(c) => {
-                self.search_text.push(c);
+                if c == ' ' {
+                    return Some(MmmEventType::Space);
+                } else {
+                    self.search_text.push(c);
+                }
             }
             KeyCode::Backspace => {
                 if !self.search_text.is_empty() {
@@ -28,7 +40,16 @@ impl MmmState {
                         .to_path_buf()
                 }
             }
+            KeyCode::Tab => {
+                if shift {
+                    return Some(MmmEventType::PrevEntry);
+                } else {
+                    return Some(MmmEventType::NextEntry);
+                }
+            }
+            KeyCode::Enter => return Some(MmmEventType::Enter),
             _ => {}
         }
+        None
     }
 }
