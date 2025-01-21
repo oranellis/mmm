@@ -22,9 +22,11 @@ pub struct MmmState {
 
 impl MmmState {
     pub fn new() -> Self {
-        let terminal_size: Vec2d = crossterm::terminal::size()
-            .expect("Unable to determine terminal size")
-            .into();
+        let (col, row) = crossterm::terminal::size().expect("Unable to determine terminal size");
+        #[cfg(not(target_os = "windows"))]
+        let terminal_size: Vec2d = (col, row).into();
+        #[cfg(windows)]
+        let terminal_size: Vec2d = (col + 1, row + 1).into();
         let current_path = std::env::current_dir().expect("Error getting filesystem path");
         let layout = MmmLayout::from_size(terminal_size.col, terminal_size.row);
         Self {

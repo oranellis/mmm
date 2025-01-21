@@ -12,6 +12,11 @@ pub enum MmmEventType {
 impl MmmState {
     pub fn process_resize_event(&mut self, new_size: Vec2d) {
         self.terminal_size = new_size;
+        #[cfg(windows)]
+        {
+            self.terminal_size.col = self.terminal_size.col + 1;
+            self.terminal_size.row = self.terminal_size.row + 1;
+        }
         self.layout = MmmLayout::from_size(new_size.col, new_size.row);
     }
 
