@@ -20,6 +20,12 @@ impl MmmState {
             KeyCode::Backspace => {
                 if !self.search_text.is_empty() {
                     self.search_text = String::new();
+                } else {
+                    self.current_path = self
+                        .current_path
+                        .parent()
+                        .unwrap_or(&self.current_path)
+                        .to_path_buf()
                 }
             }
             _ => {}
