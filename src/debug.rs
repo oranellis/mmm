@@ -1,6 +1,8 @@
-use crate::types::MmmResult;
-use crossterm::QueueableCommand;
 use std::io::{stdout, Write};
+
+use crossterm::QueueableCommand;
+
+use crate::types::MmmResult;
 
 #[allow(unused)]
 pub fn debug_print(print_str: &str) -> MmmResult<()> {

@@ -13,6 +13,7 @@ pub enum MmmLayoutType {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MmmLayout {
     pub layout_type: MmmLayoutType,
+    pub terminal_size: Vec2d,
     pub childdir_border_position: Vec2d,
     pub childdir_border_size: Vec2d,
     pub childdir_position: Vec2d,
@@ -32,7 +33,18 @@ pub struct MmmLayout {
 }
 
 impl MmmLayout {
-    pub fn from_size(columns: u16, rows: u16) -> Self {
+    pub fn new() -> Self {
+        let (col, row) = crossterm::terminal::size().expect("Unable to determine terminal size");
+        #[cfg(not(target_os = "windows"))]
+        let terminal_size: Vec2d = (col, row).into();
+        #[cfg(windows)]
+        let terminal_size: Vec2d = (col + 1, row + 1).into();
+        Self::from_size(terminal_size)
+    }
+
+    pub fn from_size(terminal_size: Vec2d) -> Self {
+        let columns = terminal_size.col;
+        let rows = terminal_size.row;
         if columns < 42 || rows < 10 {
             MmmLayout::default()
         } else {
@@ -60,6 +72,7 @@ impl MmmLayout {
             let search_box_width = current_width - 2;
             let search_box_position = search_box_border_position + (1, 1).into();
             MmmLayout {
+                terminal_size,
                 layout_type: MmmLayoutType::Normal,
                 childdir_border_position,
                 childdir_border_size,

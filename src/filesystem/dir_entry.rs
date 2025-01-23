@@ -1,15 +1,8 @@
+use super::MmmDirEntry;
 use crate::types::MmmResult;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
-
-use super::{MmmDirEntry, MmmDirList};
+use std::{fs, path::Path, rc::Rc};
 
 #[allow(unused)]
-/// Returns the size on the disk of a file or folder in bytes
-///
-/// * `path`: The file or folder to get the size of
 pub fn get_path_size(path: &Path) -> MmmResult<u64> {
     let mut total_size = 0;
     if path.is_file() {
@@ -24,8 +17,8 @@ pub fn get_path_size(path: &Path) -> MmmResult<u64> {
     Ok(total_size)
 }
 
-pub fn get_dir_list(path: &Path) -> MmmResult<MmmDirList> {
-    let mut dir_list = MmmDirList::new(path.to_path_buf());
+pub fn get_dir_list(path: &Path) -> MmmResult<Vec<Rc<MmmDirEntry>>> {
+    let mut dir_list = vec![];
     let entry_iter = fs::read_dir(path)?.filter_map(|entry| entry.ok());
     for entry in entry_iter {
         if let Ok(file_type) = entry.file_type() {
@@ -38,34 +31,29 @@ pub fn get_dir_list(path: &Path) -> MmmResult<MmmDirList> {
                         executable = metadata.permissions().mode() & 0o111 != 0;
                     }
                 }
-                dir_list.entries.push(MmmDirEntry::File {
-                    name: entry.file_name(),
+                dir_list.push(Rc::new(MmmDirEntry::File {
+                    name: entry.file_name().to_string_lossy().to_string(),
                     path: entry.path(),
                     executable,
-                });
+                }));
             } else if file_type.is_dir() {
-                dir_list.entries.push(MmmDirEntry::Directory {
-                    name: entry.file_name(),
+                dir_list.push(Rc::new(MmmDirEntry::Directory {
+                    name: entry.file_name().to_string_lossy().to_string(),
                     path: entry.path(),
-                });
+                }));
             } else if file_type.is_symlink() {
-                dir_list.entries.push(MmmDirEntry::Link {
-                    name: entry.file_name(),
+                dir_list.push(Rc::new(MmmDirEntry::Link {
+                    name: entry.file_name().to_string_lossy().to_string(),
                     path: entry.path(),
                     linked_path: fs::read_link(entry.path()).ok(),
-                });
+                }));
             } else {
-                dir_list.entries.push(MmmDirEntry::Other {
-                    name: entry.file_name(),
+                dir_list.push(Rc::new(MmmDirEntry::Other {
+                    name: entry.file_name().to_string_lossy().to_string(),
                     path: entry.path(),
-                });
+                }));
             }
         }
     }
     Ok(dir_list)
-}
-
-#[allow(unused)]
-pub fn parent_path_from(path: &Path) -> Option<PathBuf> {
-    path.parent().map(|p| p.to_path_buf())
 }

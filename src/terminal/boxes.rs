@@ -91,7 +91,7 @@ impl std::fmt::Display for TerminalBoxes {
                         self.has_west(column, row),
                     ));
                 } else {
-                    display_string.push('�');
+                    display_string.push(' ');
                 }
             }
         }

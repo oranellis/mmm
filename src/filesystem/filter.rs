@@ -1,93 +1,65 @@
-use super::{MmmDirEntry, MmmDirList};
-use std::cmp::Ordering;
+use super::{MmmDirEntry, MmmScoredDirEntry};
+use std::rc::Rc;
 
-#[derive(Clone, Debug)]
-struct ScoredDirEntry {
-    pub dir_entry: MmmDirEntry,
-    pub score: i32,
+pub fn filter_and_score(entry: Rc<MmmDirEntry>, filter: &str) -> Option<MmmScoredDirEntry> {
+    filter_match(entry.get_name(), filter).map(|filter_match| {
+        let mut score: i32 = 0;
+        if let MmmDirEntry::Directory { name: _, path: _ } = *entry {
+            score += 1000000
+        }
+        score += evaluate_score(&filter_match);
+        MmmScoredDirEntry {
+            filter_match,
+            entry,
+            score,
+        }
+    })
 }
 
-impl Ord for ScoredDirEntry {
-    fn cmp(&self, other: &Self) -> Ordering {
-        (self.score).cmp(&(other.score))
-    }
-}
-
-impl PartialOrd for ScoredDirEntry {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for ScoredDirEntry {
-    fn eq(&self, other: &Self) -> bool {
-        (self.score) == (other.score)
-    }
-}
-
-impl Eq for ScoredDirEntry {}
-
-/// Filters with a filter and returns count elements, scored by how close to the root the filter
-/// matches
-///
-/// * `dir_list`: The list of paths to filter
-/// * `filter`: The filter string to match against
-/// * `count`: The maximum number of elements returned
-pub fn filter_files(dir_list: &MmmDirList, filter: &str, count: usize) -> MmmDirList {
-    let mut filtered_list: Vec<ScoredDirEntry> = dir_list
-        .entries
-        .iter()
-        .filter_map(|entry| {
-            filter_match(&entry.get_name().to_string_lossy(), filter).map(|score| ScoredDirEntry {
-                dir_entry: entry.clone(),
-                score,
-            })
-        })
-        .collect();
-    filtered_list.sort_unstable_by_key(|dir_entry| {
-        dir_entry
-            .dir_entry
-            .get_name()
-            .to_str()
-            .map(|s| s.to_string())
-    });
-    filtered_list.sort();
-    MmmDirList {
-        path: dir_list.path.to_owned(),
-        entries: filtered_list
-            .into_iter()
-            .take(count)
-            .map(|sde| sde.dir_entry)
-            .collect(),
-    }
-}
-
-fn filter_match(base: &str, filter: &str) -> Option<i32> {
+fn filter_match(base: &str, filter: &str) -> Option<Vec<FilterMatchEnum>> {
     if filter.is_empty() {
-        return Some(0);
+        return Some(vec![FilterMatchEnum::NoMatch; base.len()]);
     };
     let mut finished_filter = false;
-    let mut score = 0;
     let mut filter_iter = filter.chars();
     let mut test_char = filter_iter
         .next()
         .expect("non empty string assertion failed");
-    for (index, base_char) in base.char_indices() {
-        if base_char.to_ascii_lowercase() == test_char.to_ascii_lowercase() {
-            score += (index as i32) + 1;
+    let mut match_list: Vec<FilterMatchEnum> = vec![];
+    for base_char in base.chars() {
+        if base_char.eq_ignore_ascii_case(&test_char) {
+            match_list.push(FilterMatchEnum::Match);
             let next_char_option = filter_iter.next();
             match next_char_option {
                 Some(next_char) => test_char = next_char,
                 None => {
                     finished_filter = true;
-                    break;
+                    test_char = '�'
                 }
             }
+        } else {
+            match_list.push(FilterMatchEnum::NoMatch);
         }
     }
     if finished_filter {
-        Some(score)
+        Some(match_list)
     } else {
         None
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum FilterMatchEnum {
+    NoMatch,
+    Match,
+}
+
+fn evaluate_score(filter_match: &[FilterMatchEnum]) -> i32 {
+    let mut start_match_weight_score: i32 = 0;
+    for (i, c) in filter_match.iter().enumerate() {
+        if *c == FilterMatchEnum::Match {
+            start_match_weight_score += 200 - i as i32;
+        }
+    }
+    start_match_weight_score
 }

@@ -1,60 +1,92 @@
 use super::layout::MmmLayout;
-use crate::types::{MmmState, Vec2d};
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crate::{filesystem::MmmFilesys, types::Vec2d};
+use crossterm::event::{Event, KeyCode, KeyEvent};
 
 pub enum MmmEventType {
+    Key(char),
     Space,
     Enter,
     NextEntry,
     PrevEntry,
+    Backspace,
+    Escape,
+    Resize(u16, u16),
 }
 
-impl MmmState {
+pub enum MmmStateUpdate {
+    NavBack,
+    NavInto,
+    NextEntry,
+    PrevEntry,
+    AddChar(char),
+    ClearSearch,
+    Resize(u16, u16),
+    Exit,
+}
+
+impl MmmLayout {
     pub fn process_resize_event(&mut self, new_size: Vec2d) {
-        self.terminal_size = new_size;
+        let new_terminal_size;
+        #[cfg(not(target_os = "windows"))]
+        {
+            new_terminal_size = new_size;
+        }
         #[cfg(windows)]
         {
-            self.terminal_size.col = self.terminal_size.col + 1;
-            self.terminal_size.row = self.terminal_size.row + 1;
+            new_terminal_size = Vec2d {
+                col: new_size.col + 1,
+                row: new_size.row + 1,
+            };
         }
-        self.layout = MmmLayout::from_size(new_size.col, new_size.row);
+        *self = Self::from_size(new_terminal_size);
     }
+}
 
-    pub fn process_key_press(&mut self, key_event: KeyEvent) -> Option<MmmEventType> {
-        if key_event.code == KeyCode::Esc {
-            self.quit = true;
+pub fn decode_crossterm_event(event: Option<Event>) -> Option<MmmEventType> {
+    if let Some(event) = event {
+        match event {
+            Event::Key(c) => decode_key_event(c),
+            Event::Resize(col, row) => Some(MmmEventType::Resize(col, row)),
+            _ => None,
         }
-        let shift = key_event.modifiers.contains(KeyModifiers::SHIFT);
-        match key_event.code {
-            KeyCode::Esc => self.quit = true,
-            KeyCode::Char(c) => {
-                if c == ' ' {
-                    return Some(MmmEventType::Space);
-                } else {
-                    self.search_text.push(c);
-                }
-            }
-            KeyCode::Backspace => {
-                if !self.search_text.is_empty() {
-                    self.search_text = String::new();
-                } else {
-                    self.current_path = self
-                        .current_path
-                        .parent()
-                        .unwrap_or(&self.current_path)
-                        .to_path_buf()
-                }
-            }
-            KeyCode::Tab => {
-                if shift {
-                    return Some(MmmEventType::PrevEntry);
-                } else {
-                    return Some(MmmEventType::NextEntry);
-                }
-            }
-            KeyCode::Enter => return Some(MmmEventType::Enter),
-            _ => {}
-        }
+    } else {
         None
+    }
+}
+
+fn decode_key_event(key_event: KeyEvent) -> Option<MmmEventType> {
+    match key_event.code {
+        KeyCode::Char(c) => {
+            if c == ' ' {
+                Some(MmmEventType::Space)
+            } else {
+                Some(MmmEventType::Key(c))
+            }
+        }
+        KeyCode::Enter => Some(MmmEventType::Enter),
+        KeyCode::BackTab => Some(MmmEventType::PrevEntry),
+        KeyCode::Tab => Some(MmmEventType::NextEntry),
+        KeyCode::Backspace => Some(MmmEventType::Backspace),
+        KeyCode::Esc => Some(MmmEventType::Escape),
+        _ => None,
+    }
+}
+
+pub fn get_state_update(event: MmmEventType, filesys_state: &MmmFilesys) -> Option<MmmStateUpdate> {
+    match event {
+        MmmEventType::Enter => None, // Disabled for now
+        MmmEventType::Key(c) => Some(MmmStateUpdate::AddChar(c)),
+        MmmEventType::Escape => Some(MmmStateUpdate::Exit),
+        MmmEventType::NextEntry => Some(MmmStateUpdate::NextEntry),
+        MmmEventType::PrevEntry => Some(MmmStateUpdate::PrevEntry),
+        MmmEventType::Resize(col, row) => Some(MmmStateUpdate::Resize(col, row)),
+        MmmEventType::Space => Some(MmmStateUpdate::NavInto),
+        MmmEventType::Backspace => {
+            if filesys_state.filter_is_empty() {
+                Some(MmmStateUpdate::NavBack)
+            } else {
+                Some(MmmStateUpdate::ClearSearch)
+            }
+        }
     }
 }
