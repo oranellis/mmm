@@ -2,7 +2,7 @@ use std::io::{stdout, Write};
 
 use crossterm::{
     cursor::MoveTo,
-    style::{Color, Colors, Print, SetColors},
+    style::{Attribute, Color, Colors, Print, SetAttribute, SetColors},
     QueueableCommand,
 };
 
@@ -17,6 +17,7 @@ pub struct WriteChunk {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StyledChar {
     pub character: char,
+    pub bold: bool,
     pub colour: Colors,
 }
 
@@ -24,16 +25,23 @@ impl From<char> for StyledChar {
     fn from(value: char) -> Self {
         Self {
             character: value,
+            bold: false,
             colour: Colors::new(Color::Reset, Color::Reset),
         }
     }
 }
 
-pub fn to_styled_string(value: &str, fg_colour: Color, bg_colour: Color) -> Vec<StyledChar> {
+pub fn to_styled_string(
+    value: &str,
+    fg_colour: Color,
+    bg_colour: Color,
+    bold: bool,
+) -> Vec<StyledChar> {
     value
         .chars()
         .map(|c| StyledChar {
             character: c,
+            bold,
             colour: Colors::new(fg_colour, bg_colour),
         })
         .collect()
@@ -88,6 +96,11 @@ impl TerminalBuffer {
         let mut stdout = stdout();
         stdout.queue(MoveTo(0, 0))?;
         for c in &self.scratch_buffer {
+            if c.bold {
+                stdout.queue(SetAttribute(Attribute::Bold))?;
+            } else {
+                stdout.queue(SetAttribute(Attribute::Reset))?;
+            }
             stdout.queue(SetColors(c.colour))?;
             stdout.queue(Print(c.character))?;
         }
