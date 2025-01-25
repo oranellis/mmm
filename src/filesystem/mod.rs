@@ -128,13 +128,9 @@ impl MmmFilesys {
 
     pub fn get_selected_entry(&self) -> Option<Rc<MmmDirEntry>> {
         if !self.filtered_current_dir_list.is_empty() {
-            Some(
-                self.filtered_current_dir_list
-                    .get(self.selected_entry)
-                    .expect("selected entry out of bounds")
-                    .entry
-                    .clone(),
-            )
+            self.filtered_current_dir_list
+                .get(self.selected_entry)
+                .map(|value| value.entry.clone())
         } else {
             None
         }
