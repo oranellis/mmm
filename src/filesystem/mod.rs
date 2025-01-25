@@ -145,14 +145,26 @@ impl MmmFilesys {
     }
 
     fn populate_filtered_list(&mut self) {
-        let mut filtered_scored: Vec<MmmScoredDirEntry> = self
-            .current_dir_list
-            .iter()
-            .filter_map(|entry| filter_and_score(entry.clone(), &self.filter))
-            .collect();
-        filtered_scored.sort_by_key(|entry| entry.score);
-        filtered_scored.reverse();
-        self.filtered_current_dir_list = filtered_scored;
+        if self.filter_is_empty() {
+            self.filtered_current_dir_list = self
+                .current_dir_list
+                .iter()
+                .map(|entry| MmmScoredDirEntry {
+                    entry: entry.clone(),
+                    score: 0,
+                    filter_match: vec![FilterMatchEnum::NoMatch; entry.get_name().len()],
+                })
+                .collect();
+        } else {
+            let mut filtered_scored: Vec<MmmScoredDirEntry> = self
+                .current_dir_list
+                .iter()
+                .filter_map(|entry| filter_and_score(entry.clone(), &self.filter))
+                .collect();
+            filtered_scored.sort_by_key(|entry| entry.score);
+            filtered_scored.reverse();
+            self.filtered_current_dir_list = filtered_scored;
+        }
     }
 
     pub fn try_nav_into(&mut self) -> MmmResult<()> {
