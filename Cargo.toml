@@ -1,11 +1,13 @@
 [package]
 name = "mmm"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-crossterm = { version = "0.25.0", features = ["event-stream"] }
+crossterm = { version = "0.28.1", features = ["event-stream"] }
+doubuff = { git = "https://github.com/oranellis/doubuff-rs.git", version = "0.1.1" }
 futures = "0.3.31"
+terminal-vec2 = { git = "https://github.com/oranellis/terminal-vec2-rs.git", tag = "v0.1.0", version = "0.1.0" }
 tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread", "time"] }
 
 [profile.release]

@@ -1,5 +1,5 @@
 use super::MmmDirEntry;
-use crate::types::MmmResult;
+use crate::error_type::MmmResult;
 use std::{fs, path::Path, rc::Rc};
 
 #[allow(unused)]

@@ -1,96 +1,84 @@
-use crate::types::Vec2d;
+use std::cmp::min;
 
-pub const PARENT_PERCENTAGE: f32 = 0.2; // As a fraction
-pub const CENTER_PERCENTAGE: f32 = 0.5; // As a fraction
+use doubuff::helpers::stop_display;
+use terminal_vec2::{vec2, Vec2};
 
-#[derive(PartialEq, Clone, Default, Debug)]
-pub enum MmmLayoutType {
-    #[default]
-    None,
-    Normal,
-}
+use crate::error_type::MmmResult;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct MmmLayout {
-    pub layout_type: MmmLayoutType,
-    pub terminal_size: Vec2d,
-    pub childdir_border_position: Vec2d,
-    pub childdir_border_size: Vec2d,
-    pub childdir_position: Vec2d,
-    pub childdir_size: Vec2d,
-    pub currentdir_border_position: Vec2d,
-    pub currentdir_border_size: Vec2d,
-    pub currentdir_position: Vec2d,
-    pub currentdir_size: Vec2d,
-    pub parentdir_border_position: Vec2d,
-    pub parentdir_border_size: Vec2d,
-    pub parentdir_position: Vec2d,
-    pub parentdir_size: Vec2d,
-    pub search_box_border_position: Vec2d,
-    pub search_box_border_size: Vec2d,
-    pub search_box_position: Vec2d,
-    pub search_box_width: u16,
+    pub term_size: Vec2,
+    pub app_pos: Vec2,
+    pub app_size: Vec2,
+    pub parent_pos: Vec2,
+    pub parent_size: Vec2,
+    pub vert_sep_pos: Vec2,
+    pub vert_sep_size: Vec2,
+    pub horiz_sep_pos: Vec2,
+    pub horiz_sep_size: Vec2,
+    pub current_pos: Vec2,
+    pub current_size: Vec2,
+    pub path_disp_pos: Vec2,
+    pub path_disp_width: usize,
+    pub search_width: usize,
 }
 
 impl MmmLayout {
-    pub fn new() -> Self {
+    pub fn new() -> MmmResult<Self> {
         let (col, row) = crossterm::terminal::size().expect("Unable to determine terminal size");
         #[cfg(not(target_os = "windows"))]
-        let terminal_size: Vec2d = (col, row).into();
-        #[cfg(windows)]
-        let terminal_size: Vec2d = (col + 1, row + 1).into();
+        let terminal_size: Vec2 = (col, row).into();
+        #[cfg(target_os = "windows")]
+        let terminal_size: Vec2 = (col + 1, row + 1).into();
         Self::from_size(terminal_size)
     }
 
-    pub fn from_size(terminal_size: Vec2d) -> Self {
-        let columns = terminal_size.col;
-        let rows = terminal_size.row;
-        if columns < 42 || rows < 10 {
-            MmmLayout::default()
-        } else {
-            let parent_width = (columns as f32 * PARENT_PERCENTAGE).round() as u16;
-            let current_width = (columns as f32 * CENTER_PERCENTAGE).round() as u16;
-            let child_width = columns - parent_width - current_width - 1;
-
-            let parentdir_border_position = (0, 0).into();
-            let currentdir_border_position = parentdir_border_position + (parent_width, 0).into();
-            let childdir_border_position = currentdir_border_position + (current_width, 0).into();
-
-            let parentdir_border_size = (parent_width, rows - 3).into();
-            let currentdir_border_size = (current_width, rows - 3).into();
-            let childdir_border_size = (child_width, rows - 3).into();
-
-            let parentdir_position = parentdir_border_position + (1, 1).into();
-            let parentdir_size = parentdir_border_size - (2, 2).into();
-            let currentdir_position = currentdir_border_position + (1, 1).into();
-            let currentdir_size = currentdir_border_size - (2, 2).into();
-            let childdir_position = childdir_border_position + (1, 1).into();
-            let childdir_size = childdir_border_size - (2, 2).into();
-
-            let search_box_border_position = currentdir_border_position + (0, rows - 3).into();
-            let search_box_border_size = (current_width, 2).into();
-            let search_box_width = current_width - 2;
-            let search_box_position = search_box_border_position + (1, 1).into();
-            MmmLayout {
-                terminal_size,
-                layout_type: MmmLayoutType::Normal,
-                childdir_border_position,
-                childdir_border_size,
-                childdir_position,
-                childdir_size,
-                currentdir_border_position,
-                currentdir_border_size,
-                currentdir_position,
-                currentdir_size,
-                parentdir_border_position,
-                parentdir_border_size,
-                parentdir_position,
-                parentdir_size,
-                search_box_border_position,
-                search_box_border_size,
-                search_box_position,
-                search_box_width,
-            }
+    pub fn from_size(term_size: Vec2) -> MmmResult<Self> {
+        if term_size.col < 10 || term_size.row < 4 {
+            stop_display()?;
+            Err("display too small")?;
         }
+        let app_size = vec2!(
+            min(term_size.col, 98),
+            term_size.row - min(term_size.row.saturating_sub(32), 10)
+        )?;
+        let app_pos = vec2!(
+            (term_size.col - app_size.col) / 2,
+            (term_size.row - app_size.row) / 2
+        )?;
+        let parent_pos = app_pos + vec2!(1, 3)?;
+        let parent_size = vec2!(min((app_size.col * 31) / 98, 31), app_size.row - 4)?;
+        let vert_sep_pos = app_pos + vec2!(parent_size.col + 1, 2)?;
+        let vert_sep_size = vec2!(1, app_size.row - 2)?;
+        let current_pos = app_pos + vec2!(parent_size.col + 2, 3)?;
+        let current_size = vec2!(
+            app_size
+                .col
+                .saturating_sub(parent_size.col)
+                .saturating_sub(3),
+            parent_size.row
+        )?;
+        let horiz_sep_pos = app_pos + vec2!(0, 2)?;
+        let horiz_sep_size = vec2!(app_size.col, 1)?;
+        let search_width = min(app_size.col as usize - 2, 20);
+        let path_disp_width = app_size.col as usize - 2 - search_width;
+        let path_disp_pos = app_pos + vec2!(1, 1)?;
+
+        Ok(MmmLayout {
+            term_size,
+            app_pos,
+            app_size,
+            parent_pos,
+            parent_size,
+            vert_sep_pos,
+            vert_sep_size,
+            current_pos,
+            current_size,
+            horiz_sep_pos,
+            horiz_sep_size,
+            search_width,
+            path_disp_width,
+            path_disp_pos,
+        })
     }
 }

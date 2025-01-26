@@ -1,6 +1,9 @@
-use super::layout::MmmLayout;
-use crate::{filesystem::MmmFilesys, types::Vec2d};
 use crossterm::event::{Event, KeyCode, KeyEvent};
+use terminal_vec2::{vec2, Vec2};
+
+use crate::{error_type::MmmResult, filesystem::MmmFilesys};
+
+use super::{draw::DrawOps, layout::MmmLayout};
 
 pub enum MmmEventType {
     Key(char),
@@ -13,7 +16,7 @@ pub enum MmmEventType {
     Resize(u16, u16),
 }
 
-pub enum MmmStateUpdate {
+pub enum MmmStateUpdateType {
     NavBack,
     NavInto,
     NextEntry,
@@ -25,20 +28,16 @@ pub enum MmmStateUpdate {
 }
 
 impl MmmLayout {
-    pub fn process_resize_event(&mut self, new_size: Vec2d) {
-        let new_terminal_size;
+    pub fn process_resize_event(&mut self, new_size: Vec2) -> MmmResult<()> {
         #[cfg(not(target_os = "windows"))]
-        {
-            new_terminal_size = new_size;
-        }
+        let new_terminal_size = new_size;
         #[cfg(windows)]
-        {
-            new_terminal_size = Vec2d {
-                col: new_size.col + 1,
-                row: new_size.row + 1,
-            };
-        }
-        *self = Self::from_size(new_terminal_size);
+        let new_terminal_size = Vec2 {
+            col: new_size.col + 1,
+            row: new_size.row + 1,
+        };
+        *self = Self::from_size(new_terminal_size)?;
+        Ok(())
     }
 }
 
@@ -72,21 +71,62 @@ fn decode_key_event(key_event: KeyEvent) -> Option<MmmEventType> {
     }
 }
 
-pub fn get_state_update(event: MmmEventType, filesys_state: &MmmFilesys) -> Option<MmmStateUpdate> {
+pub fn get_state_update_type(
+    event: MmmEventType,
+    filesys_state: &MmmFilesys,
+) -> Option<MmmStateUpdateType> {
     match event {
         MmmEventType::Enter => None, // Disabled for now
-        MmmEventType::Key(c) => Some(MmmStateUpdate::AddChar(c)),
-        MmmEventType::Escape => Some(MmmStateUpdate::Exit),
-        MmmEventType::NextEntry => Some(MmmStateUpdate::NextEntry),
-        MmmEventType::PrevEntry => Some(MmmStateUpdate::PrevEntry),
-        MmmEventType::Resize(col, row) => Some(MmmStateUpdate::Resize(col, row)),
-        MmmEventType::Space => Some(MmmStateUpdate::NavInto),
+        MmmEventType::Key(c) => Some(MmmStateUpdateType::AddChar(c)),
+        MmmEventType::Escape => Some(MmmStateUpdateType::Exit),
+        MmmEventType::NextEntry => Some(MmmStateUpdateType::NextEntry),
+        MmmEventType::PrevEntry => Some(MmmStateUpdateType::PrevEntry),
+        MmmEventType::Resize(col, row) => Some(MmmStateUpdateType::Resize(col, row)),
+        MmmEventType::Space => Some(MmmStateUpdateType::NavInto),
         MmmEventType::Backspace => {
             if filesys_state.filter_is_empty() {
-                Some(MmmStateUpdate::NavBack)
+                Some(MmmStateUpdateType::NavBack)
             } else {
-                Some(MmmStateUpdate::ClearSearch)
+                Some(MmmStateUpdateType::ClearSearch)
             }
+        }
+    }
+}
+
+pub fn process_state_update(
+    state_update: MmmStateUpdateType,
+    layout: &mut MmmLayout,
+    filesys: &mut MmmFilesys,
+) -> MmmResult<DrawOps> {
+    match state_update {
+        MmmStateUpdateType::Exit => Err("unexpected exit state".into()),
+        MmmStateUpdateType::Resize(col, row) => {
+            layout.process_resize_event(vec2!(col, row)?)?;
+            Ok(DrawOps::new(true, true, true))
+        }
+        MmmStateUpdateType::NavInto => {
+            filesys.try_nav_into()?;
+            Ok(DrawOps::new(false, true, true))
+        }
+        MmmStateUpdateType::NavBack => {
+            filesys.try_nav_back()?;
+            Ok(DrawOps::new(false, true, true))
+        }
+        MmmStateUpdateType::NextEntry => {
+            filesys.increment_current_selected();
+            Ok(DrawOps::new(false, true, false))
+        }
+        MmmStateUpdateType::PrevEntry => {
+            filesys.decrement_current_selected();
+            Ok(DrawOps::new(false, true, false))
+        }
+        MmmStateUpdateType::AddChar(c) => {
+            filesys.filter_add_char(c);
+            Ok(DrawOps::new(false, true, true))
+        }
+        MmmStateUpdateType::ClearSearch => {
+            filesys.clear_filter();
+            Ok(DrawOps::new(false, true, true))
         }
     }
 }

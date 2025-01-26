@@ -1,11 +1,10 @@
 pub(crate) mod dir_entry;
 pub(crate) mod filter;
 
-use crate::types::MmmResult;
+use crate::error_type::MmmResult;
 use dir_entry::get_dir_list;
 use filter::{filter_and_score, FilterMatchEnum};
 use std::{
-    cmp::{max, min},
     path::{Path, PathBuf},
     rc::Rc,
 };
@@ -109,11 +108,13 @@ impl MmmFilesys {
     }
 
     pub fn increment_current_selected(&mut self) {
-        self.selected_entry = max(self.selected_entry + 1, max(self.current_dir_list.len(), 0));
+        // Disabled until implemented properly
+        // self.selected_entry = max(self.selected_entry + 1, max(self.current_dir_list.len(), 0));
     }
 
     pub fn decrement_current_selected(&mut self) {
-        self.selected_entry = min(self.selected_entry - 1, 0);
+        // Disabled until implemented properly
+        // self.selected_entry = min(self.selected_entry - 1, 0);
     }
 
     pub fn clear_filter(&mut self) {

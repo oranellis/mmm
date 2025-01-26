@@ -1,29 +1,30 @@
 use std::{fs::File, io::Write, path::PathBuf, time::Duration};
 
 use crossterm::event::EventStream;
+use doubuff::{
+    buffer::TerminalBuffer,
+    helpers::{start_display, stop_display},
+};
+use error_type::MmmResult;
 use filesystem::MmmFilesys;
 use futures::{select, FutureExt, StreamExt};
 use terminal::{
-    buffer::TerminalBuffer,
-    crossterm_wrapper::{start_display, stop_display},
-    draw::DrawOps,
-    events::{decode_crossterm_event, get_state_update, MmmStateUpdate},
+    events::{
+        decode_crossterm_event, get_state_update_type, process_state_update, MmmStateUpdateType,
+    },
     layout::MmmLayout,
 };
 use tokio::time::sleep;
-use types::{MmmResult, Vec2d};
 
-mod debug;
+mod error_type;
 mod filesystem;
-mod style;
 mod terminal;
-mod types;
 
 async fn mmm() -> MmmResult<PathBuf> {
-    let mut layout = MmmLayout::new();
+    let mut layout = MmmLayout::new()?;
     let mut filesys =
         MmmFilesys::from_path(std::env::current_dir().expect("Error getting filesystem path"))?;
-    let mut terminal_buffer = TerminalBuffer::new(&layout.terminal_size);
+    let mut term_buffer = TerminalBuffer::new(layout.term_size);
     let mut event_stream = EventStream::new();
     let mut one_time_trigger = Box::pin(async {}.fuse());
 
@@ -42,8 +43,8 @@ async fn mmm() -> MmmResult<PathBuf> {
             },
             _ = one_time_trigger => {
                     terminal_event = Some(crossterm::event::Event::Resize(
-                        layout.terminal_size.col,
-                        layout.terminal_size.row
+                        layout.term_size.col,
+                        layout.term_size.row
                     ))
                 },
             _ = timer => {},
@@ -51,69 +52,20 @@ async fn mmm() -> MmmResult<PathBuf> {
 
         // State update logic
         let state_update_option = decode_crossterm_event(terminal_event)
-            .and_then(|event| get_state_update(event, &filesys));
+            .and_then(|event| get_state_update_type(event, &filesys));
         if state_update_option.is_none() {
             continue;
         }
-        let draw_ops = match state_update_option.unwrap() {
-            MmmStateUpdate::Exit => break,
-            MmmStateUpdate::Resize(col, row) => {
-                layout.process_resize_event(Vec2d { col, row });
-                DrawOps::new(true, true, true)
+        let draw_ops = match state_update_option.expect("illegal state_update_option state") {
+            MmmStateUpdateType::Exit => {
+                break;
             }
-            MmmStateUpdate::NavInto => {
-                filesys.try_nav_into()?;
-                DrawOps::new(false, true, true)
-            }
-            MmmStateUpdate::NavBack => {
-                filesys.try_nav_back()?;
-                DrawOps::new(false, true, true)
-            }
-            MmmStateUpdate::NextEntry => {
-                filesys.increment_current_selected();
-                DrawOps::new(false, true, false)
-            }
-            MmmStateUpdate::PrevEntry => {
-                filesys.decrement_current_selected();
-                DrawOps::new(false, true, false)
-            }
-            MmmStateUpdate::AddChar(c) => {
-                filesys.filter_add_char(c);
-                DrawOps::new(false, true, true)
-            }
-            MmmStateUpdate::ClearSearch => {
-                filesys.clear_filter();
-                DrawOps::new(false, true, true)
-            }
+            state_update => process_state_update(state_update, &mut layout, &mut filesys)?,
         };
 
         // Rendering logic
-        if draw_ops.is_any() {
-            if draw_ops.background {
-                terminal_buffer = TerminalBuffer::new(&layout.terminal_size);
-            }
-            terminal_buffer
-                .draw_background(&layout)?
-                .draw_current_dir(
-                    &filesys.filtered_current_dir_list,
-                    layout.currentdir_position,
-                    layout.currentdir_size,
-                )?
-                .draw_search_str(
-                    layout.search_box_position,
-                    layout.search_box_width,
-                    filesys.get_filter(),
-                )?;
-            if let Some(pdl) = &filesys.parent_dir_list {
-                terminal_buffer.draw_parent_dir(
-                    pdl,
-                    filesys.parent_current_entry,
-                    layout.parentdir_position,
-                    layout.parentdir_size,
-                )?;
-            }
-            terminal_buffer.flush()?;
-        }
+        draw_ops.draw(&mut term_buffer, &filesys, &layout)?;
+        term_buffer.flush()?;
     }
 
     Ok(filesys.get_current_path().to_path_buf())
@@ -130,7 +82,6 @@ async fn main() {
             let mut file = File::create(file_path).expect("Failed to create or open the temp file");
             file.write_all(path.to_string_lossy().as_bytes())
                 .expect("Failed to write to temp file");
-            println!("Navigating to dir {:?}", path);
             std::process::exit(0)
         }
         Err(err) => {
