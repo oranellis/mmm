@@ -89,7 +89,9 @@ async fn mmm() -> MmmResult<PathBuf> {
 
         // Rendering logic
         if draw_ops.is_any() {
-            // if draw_ops.background {
+            if draw_ops.background {
+                terminal_buffer = TerminalBuffer::new(&layout.terminal_size);
+            }
             terminal_buffer
                 .draw_background(&layout)?
                 .draw_current_dir(
