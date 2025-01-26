@@ -1,0 +1,68 @@
+name: Release Binaries
+
+on:
+  workflow_run:
+    workflows:
+      - Rust CI Tests
+    types:
+      - completed
+
+jobs:
+  build-for-release:
+    name: Build Binaries for Release
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install Cross
+        run: cargo install cross
+
+      - name: Build for x86_64-unknown-linux-gnu
+        run: cross build --release --target x86_64-unknown-linux-gnu
+
+      - name: Build for aarch64-unknown-linux-gnu
+        run: cross build --release --target aarch64-unknown-linux-gnu
+
+      - name: Build for x86_64-pc-windows-msvc
+        run: cross build --release --target x86_64-pc-windows-msvc
+
+      - name: Prepare Release Artifacts
+        run: |
+          mkdir -p release
+          cp target/x86_64-unknown-linux-gnu/release/mmm release/mmm-linux-x86_64
+          cp target/aarch64-unknown-linux-gnu/release/mmm release/mmm-linux-arm64
+          cp target/x86_64-pc-windows-msvc/release/mmm.exe release/mmm-windows-x86_64.exe
+
+      - name: Upload Release Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binaries
+          path: release
+
+  create-release:
+    name: Create Release
+    needs: build-and-release
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download Binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: release-binaries
+          path: release
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
