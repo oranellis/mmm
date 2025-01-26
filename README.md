@@ -21,17 +21,3 @@ m() {
 }
 ```
 Now by running `m` in the terminal it will cd after the program closes. Ensure you reload the terminal (close and open or source your bashrc) after adding this command to your `.bashrc`.
-
-## Development
-
-**MVP Features**
-
-- [x] Create tui buffer seperate from main terminal screen
-- [x] Use crossterm to make a tui interface
-- [x] Design interface
-- [x] Implement system calls for getting files, folders and file information asynchronously
-- [ ] Display current, parent and child folders
-- [x] Implement fzf folder changing
-- [x] Implement nvim opener
-- [ ] Implement previewer (maybe)
-- [ ] Add cli options
