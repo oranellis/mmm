@@ -23,6 +23,7 @@ pub fn get_dir_list(path: &Path) -> MmmResult<Vec<Rc<MmmDirEntry>>> {
     for entry in entry_iter {
         if let Ok(file_type) = entry.file_type() {
             if file_type.is_file() {
+                #[cfg(unix)]
                 let mut executable = false;
                 #[cfg(unix)]
                 {
@@ -31,6 +32,8 @@ pub fn get_dir_list(path: &Path) -> MmmResult<Vec<Rc<MmmDirEntry>>> {
                         executable = metadata.permissions().mode() & 0o111 != 0;
                     }
                 }
+                #[cfg(not(unix))]
+                let executable = false;
                 dir_list.push(Rc::new(MmmDirEntry::File {
                     name: entry.file_name().to_string_lossy().to_string(),
                     path: entry.path(),
