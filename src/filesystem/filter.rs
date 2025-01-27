@@ -55,11 +55,12 @@ pub enum FilterMatchEnum {
 }
 
 fn evaluate_score(filter_match: &[FilterMatchEnum]) -> i32 {
+    let length_penalisation = filter_match.len();
     let mut start_match_weight_score: i32 = 0;
     for (i, c) in filter_match.iter().enumerate() {
         if *c == FilterMatchEnum::Match {
-            start_match_weight_score += 200 - i as i32;
+            start_match_weight_score += 500 - (5 * i) as i32;
         }
     }
-    start_match_weight_score
+    start_match_weight_score - length_penalisation as i32
 }
