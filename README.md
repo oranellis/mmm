@@ -2,6 +2,16 @@
 
 This is currently a personal project to compliment my terminal workflow using a combination of neovim, ssh, and other cli tools. It is focused on fuzzy finding and keyboard first navigation and is only for navigation right now. Feel free to try it out!
 
+## Keybinds
+
+Below is a list of keybinds to use the program
+```
+Esc        - quit the program
+Backspace  - clear the filter or navigate to the parent folder
+Space      - navigate into the top folder
+Ctrl-h     - show hidden files
+```
+
 ## `cd` on quit
 
 To cd on quit you can add the following to your `$HOME/.bashrc`
