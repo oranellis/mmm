@@ -61,13 +61,14 @@ impl DrawOps {
                 layout.search_width,
                 filesys.get_filter(),
             )?;
-            if let Some(pdl) = &filesys.parent_dir_list {
+            if let Some(pdl) = &filesys.filtered_parent_dir_list {
                 draw_parent_dir(
                     term_buffer,
                     pdl,
                     filesys.parent_current_entry,
                     layout.parent_pos,
                     layout.parent_size,
+                    filesys.show_hidden_files,
                 )?;
             }
             term_buffer
@@ -151,6 +152,7 @@ pub fn draw_parent_dir(
     selected: usize,
     pos: Vec2,
     size: Vec2,
+    allow_hidden: bool,
 ) -> MmmResult<()> {
     let len = dir_list.len();
     // Calculate the top row using clamped centering formula
@@ -170,7 +172,18 @@ pub fn draw_parent_dir(
             let bg_colour;
             let bold;
             if is_selected {
-                fg_colour = Color::Red;
+                if !allow_hidden
+                    && entry
+                        .get_name()
+                        .chars()
+                        .next()
+                        .ok_or("cannot index empty name")?
+                        == '.'
+                {
+                    fg_colour = Color::DarkGrey;
+                } else {
+                    fg_colour = Color::Red;
+                }
                 bg_colour = Color::Reset;
                 bold = true;
             } else {

@@ -64,3 +64,24 @@ fn evaluate_score(filter_match: &[FilterMatchEnum]) -> i32 {
     }
     start_match_weight_score - length_penalisation as i32
 }
+
+pub fn filter_hidden(entry: Rc<MmmDirEntry>, allow_hidden: bool) -> Option<Rc<MmmDirEntry>> {
+    if !allow_hidden && entry.get_name().chars().next()? == '.' {
+        return None;
+    }
+    Some(entry)
+}
+
+pub fn filter_hidden_with_exception(
+    entry: Rc<MmmDirEntry>,
+    allow_hidden: bool,
+    exception_name: &str,
+) -> Option<Rc<MmmDirEntry>> {
+    if !allow_hidden
+        && entry.get_name().chars().next()? == '.'
+        && entry.get_name() != exception_name
+    {
+        return None;
+    }
+    Some(entry)
+}

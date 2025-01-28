@@ -1,4 +1,4 @@
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use terminal_vec2::{vec2, Vec2};
 
 use crate::{error_type::MmmResult, filesystem::MmmFilesys};
@@ -14,6 +14,7 @@ pub enum MmmEventType {
     Backspace,
     Escape,
     Resize(u16, u16),
+    ToggleHidden,
 }
 
 pub enum MmmStateUpdateType {
@@ -24,6 +25,7 @@ pub enum MmmStateUpdateType {
     AddChar(char),
     ClearSearch,
     Resize(u16, u16),
+    ToggleHidden,
     Exit,
 }
 
@@ -58,6 +60,8 @@ fn decode_key_event(key_event: KeyEvent) -> Option<MmmEventType> {
         KeyCode::Char(c) => {
             if c == ' ' {
                 Some(MmmEventType::Space)
+            } else if c == 'h' && key_event.modifiers.contains(KeyModifiers::CONTROL) {
+                Some(MmmEventType::ToggleHidden)
             } else {
                 Some(MmmEventType::Key(c))
             }
@@ -83,6 +87,7 @@ pub fn get_state_update_type(
         MmmEventType::PrevEntry => Some(MmmStateUpdateType::PrevEntry),
         MmmEventType::Resize(col, row) => Some(MmmStateUpdateType::Resize(col, row)),
         MmmEventType::Space => Some(MmmStateUpdateType::NavInto),
+        MmmEventType::ToggleHidden => Some(MmmStateUpdateType::ToggleHidden),
         MmmEventType::Backspace => {
             if filesys_state.filter_is_empty() {
                 Some(MmmStateUpdateType::NavBack)
@@ -127,6 +132,10 @@ pub fn process_state_update(
         MmmStateUpdateType::ClearSearch => {
             filesys.clear_filter();
             Ok(DrawOps::new(false, true, true))
+        }
+        MmmStateUpdateType::ToggleHidden => {
+            filesys.toggle_show_hidden_files()?;
+            Ok(DrawOps::new(false, true, false))
         }
     }
 }

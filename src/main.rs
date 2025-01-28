@@ -16,14 +16,15 @@ use terminal::{
 };
 use tokio::time::sleep;
 
+mod debug;
 mod error_type;
 mod filesystem;
 mod terminal;
 
 async fn mmm() -> MmmResult<PathBuf> {
+    let initial_path = std::env::current_dir()?;
     let mut layout = MmmLayout::new()?;
-    let mut filesys =
-        MmmFilesys::from_path(std::env::current_dir().expect("Error getting filesystem path"))?;
+    let mut filesys = MmmFilesys::from_path(initial_path)?;
     let mut term_buffer = TerminalBuffer::new(layout.term_size);
     let mut event_stream = EventStream::new();
     let mut one_time_trigger = Box::pin(async {}.fuse());
