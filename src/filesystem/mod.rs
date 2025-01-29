@@ -73,52 +73,18 @@ pub struct MmmFilesys {
 
 impl MmmFilesys {
     pub fn from_path(current_path: PathBuf) -> MmmResult<MmmFilesys> {
-        let mut current_dir_list = get_dir_list(&current_path)?;
-        current_dir_list.sort_by_key(|entry| entry.get_name().to_string());
-        let selected_entry = 0;
-        let show_hidden_files = false;
-        let filtered_current_dir_list = current_dir_list
-            .iter()
-            .filter_map(|entry| filter_hidden(entry.clone(), show_hidden_files))
-            .filter_map(|entry| filter_and_score(entry.clone(), ""))
-            .collect();
-        let filtered_parent_dir_list = current_path
-            .parent()
-            .map(get_dir_list)
-            .transpose()?
-            .map(|mut list| {
-                list.sort_by_key(|entry| entry.get_name().to_owned());
-                list
-            })
-            .map(|list| {
-                list.into_iter()
-                    .filter_map(|entry| {
-                        filter_hidden_with_exception(
-                            entry.clone(),
-                            show_hidden_files,
-                            current_path.file_name().and_then(|name| name.to_str())?,
-                        )
-                    })
-                    .collect::<Vec<Rc<MmmDirEntry>>>()
-            });
-        let parent_current_entry = if let Some(pdl) = &filtered_parent_dir_list {
-            pdl.iter()
-                .position(|entry| entry.get_path() == current_path)
-                .expect("cannot find parent dir")
-        } else {
-            0
+        let mut filesys = MmmFilesys {
+            filter: String::new(),
+            current_path: PathBuf::new(),
+            current_dir_list: Vec::new(),
+            selected_entry: 0,
+            filtered_current_dir_list: Vec::new(),
+            filtered_parent_dir_list: None,
+            parent_current_entry: 0,
+            show_hidden_files: false,
         };
-        let filter = String::new();
-        Ok(MmmFilesys {
-            current_path,
-            current_dir_list,
-            selected_entry,
-            filtered_current_dir_list,
-            filtered_parent_dir_list,
-            parent_current_entry,
-            filter,
-            show_hidden_files,
-        })
+        filesys.change_directory(current_path)?;
+        Ok(filesys)
     }
 
     pub fn change_directory(&mut self, path: PathBuf) -> MmmResult<()> {
