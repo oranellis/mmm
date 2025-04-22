@@ -78,8 +78,8 @@ dependencies = [
 
 [[package]]
 name = "doubuff"
-version = "0.1.1"
-source = "git+https://github.com/oranellis/doubuff-rs.git#11e248cc567ad001b519605b35bd7700944c27d1"
+version = "0.1.2"
+source = "git+https://github.com/oranellis/doubuff-rs.git#b4dc40b648ef15d7bc64d4141b9388e3b7151e65"
 dependencies = [
  "crossterm",
  "terminal-vec2",
@@ -247,7 +247,7 @@ dependencies = [
 
 [[package]]
 name = "mmm"
-version = "0.2.1"
+version = "0.3.1"
 dependencies = [
  "crossterm",
  "doubuff",
