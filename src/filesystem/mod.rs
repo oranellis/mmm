@@ -90,8 +90,6 @@ impl MmmFilesys {
     pub fn change_directory(&mut self, path: PathBuf) -> MmmResult<()> {
         self.current_path = path;
         self.current_dir_list = get_dir_list(&self.current_path)?;
-        self.current_dir_list
-            .sort_by_key(|entry| entry.get_name().to_string());
         self.selected_entry = 0;
         self.filtered_current_dir_list = self
             .current_dir_list
@@ -104,10 +102,6 @@ impl MmmFilesys {
             .parent()
             .map(get_dir_list)
             .transpose()?
-            .map(|mut list| {
-                list.sort_by_key(|entry| entry.get_name().to_owned());
-                list
-            })
             .map(|list| {
                 list.into_iter()
                     .filter_map(|entry| {

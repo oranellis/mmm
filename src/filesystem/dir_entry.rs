@@ -18,7 +18,8 @@ pub fn get_path_size(path: &Path) -> MmmResult<u64> {
 }
 
 pub fn get_dir_list(path: &Path) -> MmmResult<Vec<Rc<MmmDirEntry>>> {
-    let mut dir_list = vec![];
+    let mut dir_list_not_folders = vec![];
+    let mut dir_list_base = vec![];
     let entry_iter = fs::read_dir(path)?.filter_map(|entry| entry.ok());
     for entry in entry_iter {
         if let Ok(file_type) = entry.file_type() {
@@ -34,29 +35,32 @@ pub fn get_dir_list(path: &Path) -> MmmResult<Vec<Rc<MmmDirEntry>>> {
                 }
                 #[cfg(not(unix))]
                 let executable = false;
-                dir_list.push(Rc::new(MmmDirEntry::File {
+                dir_list_not_folders.push(Rc::new(MmmDirEntry::File {
                     name: entry.file_name().to_string_lossy().to_string(),
                     path: entry.path(),
                     executable,
                 }));
             } else if file_type.is_dir() {
-                dir_list.push(Rc::new(MmmDirEntry::Directory {
+                dir_list_base.push(Rc::new(MmmDirEntry::Directory {
                     name: entry.file_name().to_string_lossy().to_string(),
                     path: entry.path(),
                 }));
             } else if file_type.is_symlink() {
-                dir_list.push(Rc::new(MmmDirEntry::Link {
+                dir_list_not_folders.push(Rc::new(MmmDirEntry::Link {
                     name: entry.file_name().to_string_lossy().to_string(),
                     path: entry.path(),
                     linked_path: fs::read_link(entry.path()).ok(),
                 }));
             } else {
-                dir_list.push(Rc::new(MmmDirEntry::Other {
+                dir_list_not_folders.push(Rc::new(MmmDirEntry::Other {
                     name: entry.file_name().to_string_lossy().to_string(),
                     path: entry.path(),
                 }));
             }
         }
     }
-    Ok(dir_list)
+    dir_list_base.sort_by_key(|k| k.get_name().to_string());
+    dir_list_not_folders.sort_by_key(|k| k.get_name().to_string());
+    dir_list_base.append(&mut dir_list_not_folders);
+    Ok(dir_list_base)
 }
