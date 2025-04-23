@@ -31,3 +31,14 @@ m() {
 }
 ```
 Now by running `m` in the terminal it will cd after the program closes. Ensure you reload the terminal (close and open or source your bashrc) after adding this command to your `.bashrc`.
+
+## Installation
+
+Follow the instructions on the [releases](https://github.com/oranellis/mmm/releases) page. To download and install in one bash snippet on x86\_64 machines you can run the following,
+```
+wget -q --show-progress -O/tmp/mmm.tar.gz https://github.com/oranellis/mmm/releases/download/v0.3.2/mmm-linux-x86_64.tar.gz
+tar -xzvf /tmp/mmm.tar.gz -C /tmp
+mkdir -p ~/.local/bin
+cp /tmp/mmm ~/.local/bin
+```
+Make sure to add `~/.local/bin` to your PATH variable if not present already.
