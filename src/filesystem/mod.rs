@@ -186,10 +186,17 @@ impl MmmFilesys {
                 })
                 .collect();
         } else {
+            let local_show_hidden: bool = self.show_hidden_files
+                || self
+                    .filter
+                    .chars()
+                    .nth(0)
+                    .map(|c| c == '.')
+                    .unwrap_or(false);
             let mut filtered_scored: Vec<MmmScoredDirEntry> = self
                 .current_dir_list
                 .iter()
-                .filter_map(|entry| filter_hidden(entry.clone(), self.show_hidden_files))
+                .filter_map(|entry| filter_hidden(entry.clone(), local_show_hidden))
                 .filter_map(|entry| filter_and_score(entry.clone(), &self.filter))
                 .collect();
             filtered_scored.sort_by_key(|entry| entry.score);
