@@ -35,7 +35,7 @@ Now by running `m` in the terminal it will cd after the program closes. Ensure y
 
 Compiled binaries can be found on the [releases](https://github.com/oranellis/mmm/releases) page. To download and install in one bash snippet on x86\_64 machines you can run the following,
 ```bash
-wget -q --show-progress -O/tmp/mmm.tar.gz https://github.com/oranellis/mmm/releases/download/v0.3.2/mmm-linux-x86_64.tar.gz
+wget -q --show-progress -O/tmp/mmm.tar.gz https://github.com/oranellis/mmm/releases/latest/download/mmm-linux-x86_64.tar.gz
 tar -xzvf /tmp/mmm.tar.gz -C /tmp
 mkdir -p ~/.local/bin
 cp /tmp/mmm ~/.local/bin
@@ -51,7 +51,6 @@ m() {
     then
         (
             set -e
-            version="v0.3.2"
             case "$(uname -m)" in
                 x86_64)
                     filename="mmm-linux-x86_64.tar.gz"
@@ -65,7 +64,7 @@ m() {
             esac
             if [ -n "$filename" ]
             then
-                wget -q --show-progress -O/tmp/mmm.tar.gz "https://github.com/oranellis/mmm/releases/download/$version/$filename"
+                wget -q --show-progress -O/tmp/mmm.tar.gz "https://github.com/oranellis/mmm/releases/latest/download/$filename"
                 tar -xzf /tmp/mmm.tar.gz -C /tmp
                 mkdir -p ~/.local/bin
                 cp /tmp/mmm ~/.local/bin
