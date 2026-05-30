@@ -1,7 +1,6 @@
 use std::cmp::min;
 
-use doubuff::helpers::stop_display;
-use terminal_vec2::{vec2, Vec2};
+use doubuff::{Vec2, helpers::stop_display, vec2};
 
 use crate::error_type::MmmResult;
 

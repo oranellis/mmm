@@ -78,8 +78,8 @@ dependencies = [
 
 [[package]]
 name = "doubuff"
-version = "0.1.2"
-source = "git+https://github.com/oranellis/doubuff-rs.git#b4dc40b648ef15d7bc64d4141b9388e3b7151e65"
+version = "0.1.5"
+source = "git+https://github.com/oranellis/doubuff-rs.git#5f5b191ebb9bdfef146018413edac287828f3e82"
 dependencies = [
  "crossterm",
  "terminal-vec2",
@@ -247,12 +247,11 @@ dependencies = [
 
 [[package]]
 name = "mmm"
-version = "0.3.3"
+version = "0.4.0"
 dependencies = [
  "crossterm",
  "doubuff",
  "futures",
- "terminal-vec2",
  "tokio",
 ]
 
@@ -410,8 +409,8 @@ dependencies = [
 
 [[package]]
 name = "terminal-vec2"
-version = "0.1.0"
-source = "git+https://github.com/oranellis/terminal-vec2-rs.git?tag=v0.1.0#02c7f178f0f48151a471d69d4a6f887a354b5cd3"
+version = "0.1.1"
+source = "git+https://github.com/oranellis/terminal-vec2-rs.git#985ca13e9b88f9684be21483ab10d28bbb122417"
 
 [[package]]
 name = "tokio"

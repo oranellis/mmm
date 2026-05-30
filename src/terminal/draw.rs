@@ -5,15 +5,16 @@ use std::{
 
 use crossterm::style::{Color, Colors};
 use doubuff::{
+    Vec2,
     boxes::TerminalBoxes,
     buffer::TerminalBuffer,
-    styled_char::{add_style_to_string, StyledChar},
+    styled_char::{StyledChar, add_style_to_string},
+    vec2,
 };
-use terminal_vec2::{vec2, Vec2};
 
 use crate::{
     error_type::MmmResult,
-    filesystem::{filter::FilterMatchEnum, MmmDirEntry, MmmFilesys, MmmScoredDirEntry},
+    filesystem::{MmmDirEntry, MmmFilesys, MmmScoredDirEntry, filter::FilterMatchEnum},
 };
 
 use super::layout::MmmLayout;

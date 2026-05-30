@@ -1,5 +1,7 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use terminal_vec2::{vec2, Vec2};
+#[cfg(windows)]
+use doubuff::Vec2;
+use doubuff::{Vec2, vec2};
 
 use crate::{error_type::MmmResult, filesystem::MmmFilesys};
 
