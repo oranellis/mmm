@@ -4,7 +4,7 @@ pub(crate) mod filter;
 use crate::error_type::MmmResult;
 use crate::filesystem::filter::filter_hidden;
 use dir_entry::get_dir_list;
-use filter::{filter_and_score, filter_hidden_with_exception, FilterMatchEnum};
+use filter::{FilterMatchEnum, filter_and_score, filter_hidden_with_exception};
 use std::{
     path::{Path, PathBuf},
     rc::Rc,
@@ -206,10 +206,10 @@ impl MmmFilesys {
     }
 
     pub fn try_nav_into(&mut self) -> MmmResult<()> {
-        if let Some(dir_entry) = self.get_selected_entry() {
-            if let MmmDirEntry::Directory { name: _, path } = &*dir_entry {
-                self.change_directory(path.to_path_buf())?;
-            }
+        if let Some(dir_entry) = self.get_selected_entry()
+            && let MmmDirEntry::Directory { name: _, path } = &*dir_entry
+        {
+            self.change_directory(path.to_path_buf())?;
         }
         Ok(())
     }
